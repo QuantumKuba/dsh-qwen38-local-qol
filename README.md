@@ -7,9 +7,9 @@
 A QoL plugin for DSH (DeepSeek Harness) for people running **Qwen3.8
 locally** — **Qwen3.8-27B** on llama.cpp `llama-server` or on NInfer
 ([Neroued/ninfer](https://github.com/Neroued/ninfer) — source build or
-self-built Docker image, as of 2026-09-02 — and the **ninfer-windows 0.5.0**
-native Windows build; both serve the same OpenAI-compatible `/v1` API, so one
-plugin config covers either), and, at the config level,
+self-built Docker image, as of 2026-09-02 — and the **ninfer-windows 0.5.0 /
+0.6.x** native Windows builds; both serve the same OpenAI-compatible `/v1`
+API, so one plugin config covers either), and, at the config level,
 **Qwen3.8-Flash-Next** (same OpenAI-compatible wire, same dialect logic).
 
 It gives stock DSH (no core patches, no pi-ai patchfile) two things the local
@@ -51,6 +51,53 @@ Then select the **`qwen38-qol`** agent preset in the GUI (per session).
 
 `dsh --profile <name> --patch <plugin>/cordis.patch.yml --dump-config` shows
 the composed provider row without booting.
+
+## Update
+
+```sh
+# the plugin is a `github:` dependency; update re-resolves it against the
+# default branch:
+dsh plugin --profile web update dsh-qwen38-local-qol
+```
+
+If the profile lockfile still pins the commit the plugin was first installed
+from (`github:` specs are resolution-pinned to an exact commit), force a fresh
+resolution by re-installing:
+
+```sh
+dsh plugin --profile web remove dsh-qwen38-local-qol
+dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
+```
+
+Client-side changes ship as the committed `lib/client.js` build artifact (the
+web loader serves the bundle, never `src/`), so consumers need no build step.
+An update does not touch the generated user preset or the `qwen38-local-qol:`
+settings section — re-running `setup.js` is only required when the preset
+shape itself changes.
+
+## Uninstall
+
+```sh
+# 1. remove the dependency (the profile's bundle stack reconciles itself
+#    against the installed state):
+dsh plugin --profile web remove dsh-qwen38-local-qol
+
+# 2. delete the generated compaction user preset (created by setup.js):
+rm -rf ~/.dsh/.agent-presets/qwen38-qol
+# Windows: C:\Users\<you>\.dsh\.agent-presets\qwen38-qol
+
+# 3. tidy settings.yaml — the preset default must go, the rest is optional:
+#    - agent-presets: { default: qwen38-qol }  (a default pointing at a deleted
+#      preset breaks preset resolution)
+#    - the qwen38-local-qol: section block     (orphaned namespace; harmless if
+#      left, cleaner removed)
+#    - any DSH_QWEN38_* environment variables you set
+
+# 4. restart the DSH host (plugin code loads at host start)
+```
+
+Uninstalling touches nothing else: session history, transcripts, your model
+lines, and the engine are not plugin-owned state.
 
 ## Configuration
 
@@ -202,8 +249,9 @@ classic script — and shipped as the committed `lib/client.js`. Rebuild and
 commit after any `src/client.js` change. Peer pins: `@deepseek-ai/cordis
 ^4.0.1`, `@deepseek-ai/dsh-llm ^0.1.1-rc.2` (verified against the npm
 0.1.1-rc.2 line; developed and machine-verified on the 0.1.2-alpha.3 source
-tree), plus `@deepseek-ai/schemastery ^3.18.1` and `react ^18.2.0` for the
-settings section.
+tree; re-verified live on 0.1.5-alpha.1 after the session-log V3 upgrade
+(2026-09-09)), plus `@deepseek-ai/schemastery ^3.18.1` and `react ^18.2.0` for
+the settings section.
 
 ## Known Limitations and Deferred Work
 
@@ -232,8 +280,8 @@ settings section.
 
 给**本地跑 Qwen3.8** 的人用的 DSH（DeepSeek Harness）QoL 插件——
 **Qwen3.8-27B** 跑在 llama.cpp `llama-server` 或 NInfer（[Neroued/ninfer](https://github.com/Neroued/ninfer)——源码构建
-或自构 Docker 镜像，as of 2026-09-02——与 **ninfer-windows 0.5.0**（原生
-Windows build）；两者都提供同一套 OpenAI 兼容 `/v1` API，一份插件
+或自构 Docker 镜像，as of 2026-09-02——与 **ninfer-windows 0.5.0 / 0.6.x**
+（原生 Windows build）；两者都提供同一套 OpenAI 兼容 `/v1` API，一份插件
 配置通吃），以及配置层面的 **Qwen3.8-Flash-Next**（同一 OpenAI 兼容 wire，
 同一方言逻辑）。
 
@@ -274,6 +322,48 @@ node_modules/dsh-qwen38-local-qol/src/setup.js --src <已安装的 @deepseek-ai/
 
 `dsh --profile <name> --patch <plugin>/cordis.patch.yml --dump-config`
 可在不启动的情况下查看组合后的 provider 行。
+
+## 更新
+
+```sh
+# 插件是 `github:` 依赖；update 会重新解析默认分支：
+dsh plugin --profile web update dsh-qwen38-local-qol
+```
+
+若 profile 锁文件仍钉在首次安装时的 commit（`github:` 依赖按精确 commit
+解析），重装即可强制重新解析：
+
+```sh
+dsh plugin --profile web remove dsh-qwen38-local-qol
+dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
+```
+
+client 面改动以已提交的 `lib/client.js` 构建产物出货（web loader 只服务
+bundle，不服务 `src/`），使用方无需构建步骤。更新不会触碰生成的用户
+preset 与 `qwen38-local-qol:` 设置节——只有 preset 形状本身变化时才需要
+重跑 `setup.js`。
+
+## 卸载
+
+```sh
+# 1. 移除依赖（profile 的 bundle 栈会按已安装状态自动对齐）：
+dsh plugin --profile web remove dsh-qwen38-local-qol
+
+# 2. 删除 setup.js 生成的压缩用户 preset：
+rm -rf ~/.dsh/.agent-presets/qwen38-qol
+# Windows：C:\Users\<你>\.dsh\.agent-presets\qwen38-qol
+
+# 3. 清理 settings.yaml——preset 默认项必须删，其余可选：
+#    - agent-presets: { default: qwen38-qol }（默认项指向已删除的 preset
+#      会让 preset 解析报错）
+#    - qwen38-local-qol: 设置节（孤儿命名空间，留着无害、删了更干净）
+#    - 你设置过的 DSH_QWEN38_* 环境变量
+
+# 4. 重启 DSH host（插件代码在 host 启动时加载）
+```
+
+卸载不触碰其他任何东西：会话历史、transcript、模型线、引擎都不是插件
+持有的状态。
 
 ## 配置
 
@@ -400,7 +490,8 @@ pnpm run build:client  # 改完 src/client.js 后重建 lib/client.js
 模块格式——web loader 作为经典脚本执行的自注册脚本——以已提交的
 `lib/client.js` 出货。`src/client.js` 任何改动后重建并提交。Peer 钉版：
 `@deepseek-ai/cordis ^4.0.1`、`@deepseek-ai/dsh-llm ^0.1.1-rc.2`（对 npm
-0.1.1-rc.2 线验证；在 0.1.2-alpha.3 源码树上开发与机器验证），设置
+0.1.1-rc.2 线验证；在 0.1.2-alpha.3 源码树上开发与机器验证；2026-09-09
+session-log V3 升级后在 0.1.5-alpha.1 上实跑复验），设置
 section 另有 `@deepseek-ai/schemastery ^3.18.1` 与 `react ^18.2.0`。
 
 ## 已知限制与暂缓工作
