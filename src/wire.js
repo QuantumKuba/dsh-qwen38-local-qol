@@ -297,10 +297,19 @@ export function toTokenUsage(usage) {
   const inputTokens = usage.prompt_tokens
   const outputTokens = usage.completion_tokens
   if (typeof inputTokens !== 'number' && typeof outputTokens !== 'number') return undefined
-  const out = { inputTokens: inputTokens ?? 0, outputTokens: outputTokens ?? 0 }
+  // NInfer/llama.cpp report prompt_tokens_details.cached_tokens (OpenAI
+  // spelling); cached tokens are INCLUDED in prompt_tokens, so the harness
+  // input must be the uncached remainder (matches pi-ai's accounting).
+  const cacheRead = usage.prompt_tokens_details?.cached_tokens ?? usage.prompt_cache_hit_tokens
+  const cacheReadN = typeof cacheRead === 'number' ? cacheRead : 0
+  const out = {
+    inputTokens: Math.max(0, (inputTokens ?? 0) - cacheReadN),
+    outputTokens: outputTokens ?? 0,
+  }
   if (typeof usage.total_tokens === 'number') out.totalTokens = usage.total_tokens
   const reasoning = usage.completion_tokens_details?.reasoning_tokens
   if (typeof reasoning === 'number') out.reasoningTokens = reasoning
+  if (cacheReadN > 0) out.cacheReadTokens = cacheReadN
   return out
 }
 
