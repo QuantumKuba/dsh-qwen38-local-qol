@@ -34,8 +34,8 @@ export const BACKEND_ROW_ID = 'compaction-basic'
  * `./backend`.
  */
 export const BACKEND_PACKAGE = 'dsh-qwen38-local-qol/backend'
-/** The stock config value pinned on the backend row (the 8192 default is the cap thinking used to eat). */
-export const BACKEND_MAX_TOKENS = 16384
+/** The stock config value pinned on the backend row (8192 truncates long local checkpoints; 16384 proved tight on the 125B line). */
+export const BACKEND_MAX_TOKENS = 24576
 
 /**
  * Resolve the DSH home directory.

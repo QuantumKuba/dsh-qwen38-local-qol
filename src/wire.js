@@ -227,7 +227,9 @@ export function toOpenAiTools(tools) {
  *   any `--reasoning-budget` CLI flag).
  *
  * `maxTokens` maps to `max_tokens`: the local servers do not read
- * `max_completion_tokens`.
+ * `max_completion_tokens`. Compaction calls (`purpose: 'compaction'`) take
+ * the larger of the engine-pinned cap and the line's configured output cap,
+ * so a checkpoint keeps the room the line allows.
  * @param options - the assembled {@link GenerateOptions}.
  * @param fallbackModel - configured model id, used when the request omits one.
  * @param config - resolved plugin config (dialect, budgets, level map).
@@ -245,14 +247,25 @@ export function buildQwenBody(options, fallbackModel, config, imageDataUrls) {
   const tools = toOpenAiTools(options.tools)
   if (tools) body.tools = tools
   if (options.temperature !== undefined) body.temperature = options.temperature
-  if (options.maxTokens !== undefined) body.max_tokens = options.maxTokens
+  // Compaction summaries keep the line's output cap: the stock engine pins
+  // its own (smaller) `maxTokens` on the auxiliary call, but the local model
+  // needs the room to finish the checkpoint; a larger cap never costs the
+  // line more than its configured output.
+  const maxTokens = options.purpose === 'compaction' && typeof config.maxTokens === 'number'
+    ? Math.max(options.maxTokens ?? 0, config.maxTokens)
+    : options.maxTokens
+  if (maxTokens !== undefined) body.max_tokens = maxTokens
   if (options.stop?.length) body.stop = [...options.stop]
   if (config.includeUsage) body.stream_options = { include_usage: true }
 
   // Qwen thinking dialect. `reasoningEffort` is the adapter-owned branded id;
-  // `off` (or absent) disables thinking for the request.
+  // `off` (or absent) disables thinking for the request. Auxiliary calls
+  // (`purpose: 'compaction' | 'session-title'`) force thinking off even when
+  // the caller sets an effort: their bounded output cap must stay available
+  // for the visible result (the stock llm-deepseek adapter does the same).
+  const auxiliary = options.purpose === 'compaction' || options.purpose === 'session-title'
   const effort = typeof options.reasoningEffort === 'string' ? options.reasoningEffort : undefined
-  const thinkingOn = effort !== undefined && effort !== 'off'
+  const thinkingOn = !auxiliary && effort !== undefined && effort !== 'off'
   const kwargs = { enable_thinking: thinkingOn }
   if (thinkingOn) {
     const wireEffort = config.thinkingLevelMap?.[effort] ?? effort

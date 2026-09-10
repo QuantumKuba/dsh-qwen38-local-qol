@@ -3,16 +3,19 @@
  * engine with its sole summarization hook overridden so the summarizer
  * prefill is trimmed before the one-shot call (recent reasoning only, images
  * stripped, tool results capped). The trim keeps the auxiliary call's input
- * bounded so a slow local model does not idle out under the stream watchdog,
- * and the fixed `reasoningEffort: off` the engine sends keeps the whole output
- * cap available for the checkpoint instead of burning it on thinking.
+ * bounded so a slow local model does not idle out under the stream watchdog;
+ * thinking stays off for the call because the wire forces it off for
+ * `purpose: 'compaction'` requests, so the whole output cap is available for
+ * the checkpoint instead of burning it on thinking.
  *
  * Mounted as a service row in the generated user preset
  * (`~/.dsh/.agent-presets/qwen38-qol/agent.cordis.yml`, via
  * {@link dsh-qwen38-local-qol/setup}), inside the preset's isolated compaction
  * group. The row config is the stock `BasicCompactionConfig`; the only
- * recommended row value is `maxTokens: 16384` (the stock 8192 default is the
- * cap that thinking used to eat). The trim knobs come from the user-settings
+ * recommended row value is `maxTokens: 24576` (the stock 8192 default
+ * truncates long local checkpoints); the wire also raises any compaction
+ * call to the line's output cap, which covers presets without this row. The
+ * trim knobs come from the user-settings
  * section (the Settings tab's `summarize` block) when that namespace is
  * registered, else from environment variables (see {@link resolveTrimKnobs})
  * so the row carries no keys the stock config schema does not know.

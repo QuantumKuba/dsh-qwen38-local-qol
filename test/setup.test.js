@@ -39,7 +39,7 @@ test('transformPreset: swaps the backend name and pins maxTokens', () => {
   assert.ok(idIndex !== -1)
   assert.equal(lines[idIndex + 1], `      name: ${BACKEND_PACKAGE}`)
   assert.equal(lines[idIndex + 2], '      config:')
-  assert.equal(lines[idIndex + 3], '        maxTokens: 16384')
+  assert.equal(lines[idIndex + 3], `        maxTokens: ${BACKEND_MAX_TOKENS}`)
   // the rest of the preset is untouched
   assert.ok(out.includes("- id: command-compact"))
   assert.ok(out.includes('thresholdChars: 8192'))

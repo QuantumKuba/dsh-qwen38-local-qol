@@ -76,6 +76,36 @@ test('buildQwenBody: absent effort — thinking off, no budget', () => {
   assert.ok(!('reasoning_budget_tokens' in body))
 })
 
+test('buildQwenBody: auxiliary purpose forces thinking off despite a set effort (both dialects)', () => {
+  for (const config of [NINFER, LLAMACPP]) {
+    const body = buildQwenBody(
+      { model: 'qwen', reasoningEffort: 'medium', purpose: 'compaction', maxTokens: 24576, messages: [] },
+      'qwen',
+      config,
+    )
+    assert.deepEqual(body.chat_template_kwargs, { enable_thinking: false })
+    assert.ok(!('reasoning_effort' in body))
+    assert.ok(!('reasoning_budget_tokens' in body))
+    assert.equal(body.max_tokens, 24576)
+  }
+  const title = buildQwenBody(
+    { model: 'qwen', reasoningEffort: 'xhigh', purpose: 'session-title', messages: [] },
+    'qwen',
+    LLAMACPP,
+  )
+  assert.deepEqual(title.chat_template_kwargs, { enable_thinking: false })
+})
+
+test('buildQwenBody: compaction purpose keeps the line output cap over the engine-pinned one', () => {
+  const config = { ...NINFER, maxTokens: 24576 }
+  const body = buildQwenBody({ model: 'qwen', purpose: 'compaction', maxTokens: 8192, messages: [] }, 'qwen', config)
+  assert.equal(body.max_tokens, 24576)
+  const big = buildQwenBody({ model: 'qwen', purpose: 'compaction', maxTokens: 32768, messages: [] }, 'qwen', config)
+  assert.equal(big.max_tokens, 32768)
+  const normal = buildQwenBody({ model: 'qwen', maxTokens: 24576, messages: [] }, 'qwen', config)
+  assert.equal(normal.max_tokens, 24576)
+})
+
 test('buildQwenBody: effort without a configured budget sends no budget field', () => {
   const config = { ...NINFER, thinkingBudgets: { low: 4096 } }
   const body = buildQwenBody({ model: 'qwen', reasoningEffort: 'medium', messages: [] }, 'qwen', config)
