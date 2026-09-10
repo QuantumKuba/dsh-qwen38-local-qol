@@ -27,8 +27,10 @@ Qwen line needs:
 2. **A compaction backend that stops burning the output cap on thinking.**
    The stock engine's sole `summarize()` hook is overridden so the summarizer
    prefill is trimmed first (recent reasoning only, images stripped, tool
-   results capped) and the one-shot call keeps thinking off — the checkpoint
-   gets the whole output cap instead of a truncated "incomplete checkpoint".
+   results capped). Thinking-off and the output cap are enforced on the wire
+   for every `purpose: 'compaction'` call regardless of the preset in use —
+   the checkpoint gets the line's whole output cap instead of a truncated
+   "incomplete checkpoint".
 
 One package, three registrations:
 
@@ -130,8 +132,10 @@ stock config schema does not know):
 | `DSH_QWEN38_SUMMARIZE_KEEP_TURNS` | `5` | assistant turns at the region tail whose reasoning is kept |
 | `DSH_QWEN38_SUMMARIZE_TOOL_CHARS` | `2000` | per-tool-result character cap (JS string length: one CJK character = one ASCII letter = 1 — characters, not tokens); `0` disables |
 
-The generated preset pins the backend row's `maxTokens` to `16384` (the stock
-8192 default is the cap thinking used to eat before this backend existed).
+The generated preset pins the backend row's `maxTokens` to `24576` (the stock
+8192 default truncates long checkpoints; the wire additionally raises any
+compaction call to the line's own `maxTokens` cap, so a larger row value only
+helps lines with a bigger output cap).
 
 ## Settings tab
 
@@ -217,6 +221,11 @@ Both dialects speak OpenAI-compatible `/v1/chat/completions` with:
   dropped).
 - `finish_reason: length` → harness `max-tokens` (a budget or output
   truncation is not presented as a complete answer).
+- Auxiliary calls (`purpose: 'compaction' | 'session-title'`) force
+  `enable_thinking: false` regardless of the caller's `reasoningEffort` —
+  their bounded output cap is reserved for the visible result. A compaction
+  call also takes the larger of the engine-pinned `maxTokens` and the line's
+  configured output cap.
 - usage: `completion_tokens_details.reasoning_tokens` → per-turn reasoning
   tokens in the GUI, when the server reports it (the llama.cpp
   reasoning-budget build does; NInfer 0.5.0 reports it with
@@ -259,11 +268,13 @@ the settings section.
   dialect logic; no NInfer Flash-Next artifact exists yet (0.5.0 ships 27B
   NVFP4 only), so Flash-Next runs on the `llamacpp` dialect (Unsloth
   `qwen4exp` branch) with its own `contextWindow`/budget values.
-- **rc.2 summarizer behavior.** The backend trims the prefill itself and
-  delegates the one-shot call to the stock engine path; if the installed
-  compaction-basic predates the stock `reasoningEffort: off` summarizer,
-  compaction thinking-off depends on the engine's call, not this plugin.
-  Alpha.3 and later send it unconditionally.
+- **Summarizer behavior depends on the engine version.** The backend trims
+  the prefill itself and delegates the one-shot call to the stock engine
+  path. The wire's auxiliary-call rules (thinking forced off, compaction
+  `max_tokens` raised to the line cap) apply to every engine version,
+  including stock 0.1.5-alpha.1, which no longer sends `reasoningEffort: off`
+  on its own — but the engine-internal behavior (e.g. a future engine that
+  re-introduces per-summary options) is not controlled by this plugin.
 - **The preset seam is a Web-surface feature.** Headless profiles do not
   mount the `agent-presets` row, so their sessions are bare agents and the
   generated preset's compaction backend does not apply there; the provider
@@ -298,8 +309,9 @@ the settings section.
    实际读取的开关。
 2. **不再把输出帽烧在 thinking 上的压缩（compaction）后端。** 覆盖原版
    引擎唯一的 `summarize()` 钩子：摘要 prefill 先裁剪（只留近期
-   reasoning、图片剔除、工具结果截断），一次性调用保持 thinking 关闭——
-   checkpoint 拿到完整输出帽，而不是被截断的 "incomplete checkpoint"。
+   reasoning、图片剔除、工具结果截断）。thinking-off 与输出帽在 wire 层
+   对每个 `purpose: 'compaction'` 调用强制（与你用哪个 preset 无关）——
+   checkpoint 拿到该线完整输出帽，而不是被截断的 "incomplete checkpoint"。
 
 一个包，三处注册：
 
@@ -394,8 +406,9 @@ config 对象，所以环境回退只作用于补丁没写的字段）：
 | `DSH_QWEN38_SUMMARIZE_KEEP_TURNS` | `5` | 区域尾部保留 reasoning 的 assistant 轮数 |
 | `DSH_QWEN38_SUMMARIZE_TOOL_CHARS` | `2000` | 单条工具结果字符帽（JS 字符串长度：一个中文字 = 一个英文字母 = 1——是字符不是 token）；`0` 禁用 |
 
-生成的 preset 把后端行的 `maxTokens` 钉在 `16384`（原版 8192 默认帽是
-此前 thinking 吃满输出帽的元凶）。
+生成的 preset 把后端行的 `maxTokens` 钉在 `24576`（原版 8192 默认帽截断
+长 checkpoint；wire 层还会把任何 compaction 调用的 `max_tokens` 提到该线
+自身的 `maxTokens` 帽——更大的钉值只对输出帽更大的线有意义）。
 
 ## 设置 tab
 
@@ -464,6 +477,10 @@ tab 实况（两条线）：
   无签名 thinking 块不再被静默丢弃）。
 - `finish_reason: length` → harness `max-tokens`（预算或输出截断不表现为
   完整回答）。
+- 辅助调用（`purpose: 'compaction' | 'session-title'`）无条件发
+  `enable_thinking: false`（不依赖调用方的 `reasoningEffort`）——其有界
+  输出帽留给可见结果。compaction 调用的 `max_tokens` 取引擎钉值与该线
+  配置输出帽的较大者。
 - usage：`completion_tokens_details.reasoning_tokens` → GUI 逐轮
   reasoning tokens（服务端报告时；llama.cpp reasoning-budget 构建报告；
   NInfer 0.5.0 在 `stream_options.include_usage` 下报告——2026-09 验证；
@@ -500,9 +517,11 @@ section 另有 `@deepseek-ai/schemastery ^3.18.1` 与 `react ^18.2.0`。
   Flash-Next 工件尚不存在（0.5.0 只出 27B NVFP4），所以 Flash-Next 跑在
   `llamacpp` 方言（Unsloth `qwen4exp` 分支），用自己的
   `contextWindow`/预算值。
-- **rc.2 摘要器行为。** 后端自己裁 prefill，一次性调用委托给原版引擎路径；
-  若已安装的 compaction-basic 早于原版 `reasoningEffort: off` 摘要器，
-  压缩 thinking-off 取决于引擎那次调用而非本插件。Alpha.3 起无条件发送。
+- **摘要器行为依赖引擎版本。** 后端自己裁 prefill，一次性调用委托给
+  原版引擎路径。wire 层辅助调用规则（thinking 强制 off、compaction
+  `max_tokens` 提到线帽）对所有引擎版本生效（含不再自带
+  `reasoningEffort: off` 的 stock 0.1.5-alpha.1），但引擎内部行为（例如
+  未来引擎重新引入 per-summary options）不在本插件控制之内。
 - **preset 接缝是 web 面功能。** headless profile 不挂 `agent-presets`
   行，其会话是裸 agent，生成的 preset 压缩后端在那里不生效；provider 路由
   两面都工作。上游为 headless 打开 preset/settings 接缝之前，headless
