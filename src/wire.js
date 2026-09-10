@@ -456,7 +456,7 @@ export function createChunkTranslator() {
           const argumentsDelta = call.function?.arguments ?? ''
           if (argumentsDelta !== '') {
             block.args = (block.args ?? '') + argumentsDelta
-            chunks.push({ type: 'tool-call-delta', index, id: block.id, name: call.function?.name, argumentsDelta })
+            chunks.push({ type: 'tool-call-delta', index, id: block.id, name: block.name ?? '', argumentsDelta })
           }
         }
       }

@@ -187,6 +187,9 @@ test('translator: interleaved reasoning, text, tool call — stable indexes, usa
     ...translator.accept({ choices: [{ delta: {}, finish_reason: 'tool_calls' }], usage: { prompt_tokens: 1, completion_tokens: 2 } }),
     ...translator.end(),
   ]
+  // Every emitted chunk must be losslessly JSON-serializable (the harness
+  // snapshot contract): an undefined/NaN property in any chunk fails a turn.
+  for (const chunk of chunks) assert.deepEqual(JSON.parse(JSON.stringify(chunk)), chunk)
   const types = chunks.map((chunk) => `${chunk.type}:${chunk.index ?? ''}`)
   assert.deepEqual(types, [
     'block-start:0',
