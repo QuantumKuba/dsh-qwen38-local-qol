@@ -103,13 +103,13 @@
 }
 
 /* Two-field rows: the effort-cap row's 164px fields and its exact 42px gap,
-   right-packed so the row ends at the content edge like that row; the pair
-   then sits over the reasoning row's second and third columns. */
+   centered — two fields cannot tile the 576px content width, so the pair
+   reads as one deliberate unit with symmetric margins. */
 .qol-row2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 164px));
   column-gap: 42px;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 /* The effort-cap row: capped fields read as three separate inputs (42px
