@@ -103,11 +103,11 @@
 }
 
 /* Two-field rows: the fields take the effort-cap row's width, left-packed
-   at the official 12px field gap instead of spanning the content edge. */
+   with that row's 42px gap. */
 .qol-row2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 164px));
-  gap: 12px;
+  column-gap: 42px;
 }
 
 /* The effort-cap row: capped fields read as three separate inputs (42px
