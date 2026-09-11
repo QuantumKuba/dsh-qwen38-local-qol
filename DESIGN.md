@@ -58,7 +58,7 @@ profile（其 tui profile）有效。
     - id: qwen38
       name: dsh-qwen38-local-qol
       config:
-        baseURL: http://127.0.0.1:8082/v1
+        baseURL: http://localhost:8082/v1
         model: qwen3.8-27b-nvfp4-uncensored
         dialect: ninfer
         contextWindow: 229376
@@ -111,7 +111,7 @@ profile（其 tui profile）有效。
 
 | 键 | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `baseURL` | string | `http://127.0.0.1:8082/v1` | 含 `/v1`，不重复拼 |
+| `baseURL` | string | `http://localhost:8082/v1` | 含 `/v1`，不重复拼 |
 | `model` | string | 必填 | 服务端 alias |
 | `apiKey` | string | 无（不发 Authorization） | 或服务端 `--api-key` 同值 |
 | `dialect` | `'ninfer' \| 'llamacpp'` | 必填 | 决定 effort/budget 的 wire 位置（见 §5） |

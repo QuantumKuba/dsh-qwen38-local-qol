@@ -115,7 +115,7 @@ fields the patch leaves out):
 
 | Field | Env fallback | Default | Meaning |
 |---|---|---|---|
-| `baseURL` | `DSH_QWEN38_BASE_URL` | `http://127.0.0.1:8082/v1` | server base, including `/v1` |
+| `baseURL` | `DSH_QWEN38_BASE_URL` | `http://localhost:8082/v1` | server base, including `/v1` |
 | `model` | `DSH_QWEN38_MODEL` | `qwen3.8-27b-nvfp4-uncensored` | model id sent when a request omits one (the NInfer 0.5.0 artifact id — same for the Docker and the Windows build; verify against the running server with `GET /v1/models`; the llama.cpp line serves its own id — set this field or the env there) |
 | `displayName` | `DSH_QWEN38_DISPLAY_NAME` | the model id | human-readable name for the GUI model selector (the wire id is an artifact alias) |
 | `apiKey` | `DSH_QWEN38_API_KEY` | — | server `--api-key`, when set |
@@ -410,7 +410,7 @@ config 对象，所以环境回退只作用于补丁没写的字段）：
 
 | 字段 | 环境回退 | 默认值 | 含义 |
 |---|---|---|---|
-| `baseURL` | `DSH_QWEN38_BASE_URL` | `http://127.0.0.1:8082/v1` | 服务器地址（含 `/v1`） |
+| `baseURL` | `DSH_QWEN38_BASE_URL` | `http://localhost:8082/v1` | 服务器地址（含 `/v1`） |
 | `model` | `DSH_QWEN38_MODEL` | `qwen3.8-27b-nvfp4-uncensored` | 请求未带 model 时发送的 id（NInfer 0.5.0 工件 id——Docker 与 Windows build 相同；可用 `GET /v1/models` 对运行中的服务器核实；llama.cpp 线用自己的 id——在那边设此字段或环境变量） |
 | `displayName` | `DSH_QWEN38_DISPLAY_NAME` | model id | GUI 模型选择器的可读名（wire id 是工件别名） |
 | `apiKey` | `DSH_QWEN38_API_KEY` | — | 服务器 `--api-key`（如设置） |

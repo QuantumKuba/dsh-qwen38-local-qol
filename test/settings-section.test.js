@@ -42,9 +42,9 @@ test('sectionSchema: a fully-default value opens on the general default (llama.c
 
 test('sectionSchema: partial user layers fill the missing fields', () => {
   const schema = sectionSchema()
-  const resolved = schema({ dialect: 'llamacpp', baseURL: 'http://127.0.0.1:8080/v1' })
+  const resolved = schema({ dialect: 'llamacpp', baseURL: 'http://localhost:8080/v1' })
   assert.equal(resolved.dialect, 'llamacpp')
-  assert.equal(resolved.baseURL, 'http://127.0.0.1:8080/v1')
+  assert.equal(resolved.baseURL, 'http://localhost:8080/v1')
   assert.equal(resolved.model, DEFAULT_MODEL)
   assert.equal(resolved.contextWindow, DEFAULT_CONTEXT_WINDOW)
 })
@@ -69,9 +69,9 @@ test('sectionSchema: lines carry each dialect production defaults (connection + 
 
 test('sectionSchema: a user-saved line persists over its own defaults', () => {
   const resolved = sectionSchema()({
-    lines: { llamacpp: { baseURL: 'http://127.0.0.1:9999/v1', model: 'some-alias', displayName: 'LLM', contextWindow: 131072, defaultThinkingBudget: 32768, summarize: { images: 'keep', keepTurns: 3, toolChars: 1000 } } },
+    lines: { llamacpp: { baseURL: 'http://localhost:9999/v1', model: 'some-alias', displayName: 'LLM', contextWindow: 131072, defaultThinkingBudget: 32768, summarize: { images: 'keep', keepTurns: 3, toolChars: 1000 } } },
   })
-  assert.equal(resolved.lines.llamacpp.baseURL, 'http://127.0.0.1:9999/v1')
+  assert.equal(resolved.lines.llamacpp.baseURL, 'http://localhost:9999/v1')
   assert.equal(resolved.lines.llamacpp.model, 'some-alias')
   assert.equal(resolved.lines.llamacpp.displayName, 'LLM')
   assert.equal(resolved.lines.llamacpp.contextWindow, 131072)
