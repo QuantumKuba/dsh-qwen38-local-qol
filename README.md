@@ -84,13 +84,12 @@ If the profile lockfile still pins the commit first installed (`github:` depende
 
 ## Uninstall
 
-```sh
-dsh plugin --profile web remove dsh-qwen38-local-qol     # 1. remove the dependency
-rm -rf ~/.dsh/.agent-presets/qwen38-qol                  # 2. remove the generated compaction preset (Windows: C:\Users\<you>\.dsh\.agent-presets\qwen38-qol)
-# 3. settings.yaml: drop agent-presets: { default: qwen38-qol } (required — a default pointing at a removed preset breaks resolution; setup.js leaves .bak backups)
-#    optional: drop the qwen38-local-qol: settings section, the DSH_QWEN38_* env vars you set
-# 4. restart the DSH host (plugin code loads at host boot)
-```
+1. `dsh plugin --profile web remove dsh-qwen38-local-qol` (removes the dependency).
+2. Delete the **`qwen38-qol`** agent preset on the DSH settings → Agent presets page.
+3. In `~/.dsh/settings.yaml`, drop `agent-presets: { default: qwen38-qol }` — required, since a default pointing at a deleted preset breaks resolution (if you ran `setup.js`, dated `.bak` backups remain).
+4. Restart DSH (plugin code loads at host boot).
+
+Optional: drop the `qwen38-local-qol:` settings section and the `DSH_QWEN38_*` env vars you set.
 
 Uninstall touches nothing else: session history, transcripts, model lines and engines are not state the plugin owns.
 
@@ -198,13 +197,12 @@ dsh plugin --profile web update dsh-qwen38-local-qol
 
 ## 卸载
 
-```sh
-dsh plugin --profile web remove dsh-qwen38-local-qol     # 1. 移除依赖
-rm -rf ~/.dsh/.agent-presets/qwen38-qol                  # 2. 删除生成的压缩 preset（Windows：C:\Users\<你>\.dsh\.agent-presets\qwen38-qol）
-# 3. settings.yaml 删掉 agent-presets: { default: qwen38-qol }（必须——默认项指向已删除的 preset 会让解析报错；setup.js 留有 .bak 备份）
-#    可选：删 qwen38-local-qol: 设置节、你设置过的 DSH_QWEN38_* 环境变量
-# 4. 重启 DSH host（插件代码在 host 启动时加载）
-```
+1. `dsh plugin --profile web remove dsh-qwen38-local-qol`（移除依赖）。
+2. 在 DSH 设置 → Agent 预设页删除 **`qwen38-qol`** 用户 preset。
+3. `~/.dsh/settings.yaml` 删掉 `agent-presets: { default: qwen38-qol }`——必须删，默认项指向已删除的 preset 会让解析报错（跑过 `setup.js` 的话留有日期 `.bak` 备份）。
+4. 重启 DSH（插件代码在 host 启动时加载）。
+
+可选：删 `qwen38-local-qol:` 设置节、你设置过的 `DSH_QWEN38_*` 环境变量。
 
 卸载不触碰其他任何东西：会话历史、transcript、模型线、引擎都不是插件持有的状态。
 
