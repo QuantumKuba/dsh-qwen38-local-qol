@@ -55,8 +55,8 @@ export const AGENT_PRESETS_SECTION = 'agent-presets'
 export const DEFAULT_KEY = 'default'
 /** The display-metadata file beside a preset's composition (the agent-preset picker reads name/description/order from it). */
 export const PRESET_METADATA_FILE = 'preset.yml'
-/** The description the generated preset publishes about itself (bilingual, one language per line; the picker shows one unlocalized string for user presets, and the preset card renders newlines as line breaks). */
-export const PRESET_DESCRIPTION = '标准模式 + 自定义压缩\nStandard mode + custom compaction'
+/** The description the generated preset publishes about itself (bilingual, one line, '|' separated; the picker shows one unlocalized string for user presets). */
+export const PRESET_DESCRIPTION = '标准模式 + 自定义压缩 | Standard mode + custom compaction'
 
 /**
  * Resolve the DSH home directory.

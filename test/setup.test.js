@@ -159,7 +159,7 @@ test('applyDefaultPreset: leaves a nested agent-presets key alone', () => {
   assert.ok(text.includes('plugins:\n  agent-presets: true'))
 })
 
-test('renderPresetMetadata: publishes the multi-line description as a YAML block scalar', () => {
-  assert.equal(PRESET_DESCRIPTION, '标准模式 + 自定义压缩\nStandard mode + custom compaction')
-  assert.equal(renderPresetMetadata(), 'description: |-\n  标准模式 + 自定义压缩\n  Standard mode + custom compaction\n')
+test('renderPresetMetadata: publishes the bilingual description as a YAML block scalar', () => {
+  assert.equal(PRESET_DESCRIPTION, '标准模式 + 自定义压缩 | Standard mode + custom compaction')
+  assert.equal(renderPresetMetadata(), 'description: |-\n  标准模式 + 自定义压缩 | Standard mode + custom compaction\n')
 })
