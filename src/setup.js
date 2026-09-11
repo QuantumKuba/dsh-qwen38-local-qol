@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * Generate the user preset that mounts the Qwen3.8 compaction backend inside
- * the agent preset's isolated compaction group, and set that preset as the
- * default agent preset.
+ * the agent preset's isolated compaction group, publish its display metadata
+ * (`preset.yml` beside the composition), and set it as the default agent
+ * preset.
  *
  * Reads the installed standard preset's `agent.cordis.yml`, swaps the
  * `compaction-basic` row for this package's backend (and pins its
@@ -15,6 +16,10 @@
  * `~/.dsh/settings.yaml` (a dated backup of the file when it changed) so new
  * sessions use the preset automatically; an already-set default is left
  * untouched (idempotent re-runs).
+ *
+ * The display metadata (`preset.yml` next to the composition, which the
+ * agent-preset picker reads for its name/description) is written with the
+ * generated preset so the card does not read "no description".
  *
  * Usage:
  *   node src/setup.js [--src <preset agent.cordis.yml>]
@@ -48,6 +53,10 @@ export const SETTINGS_FILE = 'settings.yaml'
 export const AGENT_PRESETS_SECTION = 'agent-presets'
 /** The key inside that section. */
 export const DEFAULT_KEY = 'default'
+/** The display-metadata file beside a preset's composition (the agent-preset picker reads name/description/order from it). */
+export const PRESET_METADATA_FILE = 'preset.yml'
+/** The description the generated preset publishes about itself. */
+export const PRESET_DESCRIPTION = 'standard local qwen'
 
 /**
  * Resolve the DSH home directory.
@@ -184,8 +193,17 @@ export function ensureDefaultPreset(dshHome) {
 }
 
 /**
- * Run the generator: write the user preset, then set it as the default agent
- * preset in the DSH home's settings.yaml.
+ * Render the preset.yml document published beside the generated composition.
+ * @returns the YAML text (the description key only; the picker falls back to
+ *   the preset id for the name).
+ */
+export function renderPresetMetadata() {
+  return `description: ${PRESET_DESCRIPTION}\n`
+}
+
+/**
+ * Run the generator: write the user preset, publish its display metadata,
+ * then set it as the default agent preset in the DSH home's settings.yaml.
  * @param options - CLI options.
  * @param options.src - explicit path to the installed standard preset's agent.cordis.yml.
  * @param options.home - DSH home override (defaults to env DSH_HOME or ~/.dsh).
@@ -211,6 +229,11 @@ export function generatePreset({ src, home } = {}) {
   }
   mkdirSync(dir, { recursive: true })
   writeFileSync(target, transformed)
+  const metadataTarget = join(dir, PRESET_METADATA_FILE)
+  if (existsSync(metadataTarget)) {
+    copyFileSync(metadataTarget, `${metadataTarget}.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`)
+  }
+  writeFileSync(metadataTarget, renderPresetMetadata())
   const { path: settings, changed } = ensureDefaultPreset(dshHome)
   return { preset: target, settings, defaultChanged: changed }
 }

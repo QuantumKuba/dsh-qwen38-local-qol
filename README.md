@@ -45,9 +45,9 @@ One package, three registrations:
 ```sh
 # same as any other plugin (add --profile <name> for a non-default profile):
 dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
-# plugin-specific one-time step — generate the compaction user preset AND set
-# it as the default agent preset in ~/.dsh/settings.yaml (a dated backup of
-# each file it changes, on re-run):
+# plugin-specific one-time step — generate the compaction user preset (with
+# its picker description), AND set it as the default agent preset in
+# ~/.dsh/settings.yaml (a dated backup of each file it changes, on re-run):
 node_modules/dsh-qwen38-local-qol/src/setup.js --src <path to the installed @deepseek-ai/dsh-agent-presets presets/standard/agent.cordis.yml>
 ```
 
@@ -334,8 +334,8 @@ the settings section.
 ```sh
 # 与其他插件相同（非默认 profile 加 --profile <name>）：
 dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
-# 本插件特有的一次性步骤——生成压缩用户 preset，并把 agent preset 默认设为
-# qwen38-qol（重跑对它改动的每个文件各留日期备份）：
+# 本插件特有的一次性步骤——生成压缩用户 preset（含选择器描述），并把 agent
+# preset 默认设为 qwen38-qol（重跑对它改动的每个文件各留日期备份）：
 node_modules/dsh-qwen38-local-qol/src/setup.js --src <已安装的 @deepseek-ai/dsh-agent-presets 的 presets/standard/agent.cordis.yml 路径>
 ```
 

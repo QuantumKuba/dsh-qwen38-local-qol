@@ -10,7 +10,9 @@ import {
   BACKEND_PACKAGE,
   BACKEND_MAX_TOKENS,
   applyDefaultPreset,
+  renderPresetMetadata,
   PRESET_ID,
+  PRESET_DESCRIPTION,
 } from '../src/setup.js'
 
 const PRESET = [
@@ -155,4 +157,8 @@ test('applyDefaultPreset: leaves a nested agent-presets key alone', () => {
   const { text, changed } = applyDefaultPreset(existing)
   assert.equal(changed, 'appended')
   assert.ok(text.includes('plugins:\n  agent-presets: true'))
+})
+
+test('renderPresetMetadata: publishes the generated preset description', () => {
+  assert.equal(renderPresetMetadata(), `description: ${PRESET_DESCRIPTION}\n`)
 })
