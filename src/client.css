@@ -102,14 +102,14 @@
   accent-color: var(--dsw-alias-brand-primary);
 }
 
-/* Two-field rows: the effort-cap row's 164px fields and its exact 42px gap,
-   centered — two fields cannot tile the 576px content width, so the pair
-   reads as one deliberate unit with symmetric margins. */
+/* Two-field rows: the fields are long enough to span the content edge with
+   space-between, and the middle gap lands on the reasoning row's 42px
+   (267px fields at the 576px width). */
 .qol-row2 {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 164px));
-  column-gap: 42px;
-  justify-content: center;
+  grid-template-columns: repeat(2, minmax(0, 267px));
+  gap: 12px;
+  justify-content: space-between;
 }
 
 /* The effort-cap row: capped fields read as three separate inputs (42px
