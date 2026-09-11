@@ -102,19 +102,19 @@
   accent-color: var(--dsw-alias-brand-primary);
 }
 
-/* Multi-field rows: fluid 1fr fields with a fixed 42px column gap, so the
+/* Multi-field rows: fluid 1fr fields with a fixed 21px column gap, so the
    gaps stay equal across rows at any content width; the fields take the
-   remaining width (≈267px / ≈164px at the current column). */
+   remaining width (≈278px / ≈178px at the current column). */
 .qol-row2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 42px;
+  gap: 21px;
 }
 
 .qol-row3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 42px;
+  gap: 21px;
 }
 
 /* The inactive line's effort caps stay visible but read as parked. */
