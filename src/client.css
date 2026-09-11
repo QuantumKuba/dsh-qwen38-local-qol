@@ -103,12 +103,14 @@
   gap: 12px;
 }
 
-/* The effort-cap row stays short on purpose: three capped fields read as
-   separate inputs instead of one bar spanning the content column. */
+/* The effort-cap row: capped fields read as three separate inputs, while
+   space-between keeps the row ending at the settings content edge, the same
+   right edge as the official sections. */
 .qol-row3 {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 156px));
+  grid-template-columns: repeat(3, minmax(0, 168px));
   gap: 12px;
+  justify-content: space-between;
 }
 
 /* The inactive line's effort caps stay visible but read as parked. */
