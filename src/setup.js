@@ -56,7 +56,7 @@ export const DEFAULT_KEY = 'default'
 /** The display-metadata file beside a preset's composition (the agent-preset picker reads name/description/order from it). */
 export const PRESET_METADATA_FILE = 'preset.yml'
 /** The description the generated preset publishes about itself. */
-export const PRESET_DESCRIPTION = 'standard local qwen'
+export const PRESET_DESCRIPTION = '标准模式 + 自定义压缩'
 
 /**
  * Resolve the DSH home directory.
