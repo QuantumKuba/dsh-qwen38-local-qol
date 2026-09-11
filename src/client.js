@@ -109,6 +109,18 @@ export function compactionStatusCopy(status, t) {
   return t.compactionAvailable.replace('{default}', String(status.defaultPreset))
 }
 
+/**
+ * The status dot color for the compaction wiring line, so the state reads at
+ * a glance instead of parsing the sentence.
+ * @param status - the host-computed `{ presetGenerated, defaultPreset }`.
+ * @returns the dot color (green = active, amber = available, grey = not set up).
+ */
+export function compactionStatusColor(status) {
+  if (status === undefined || status.presetGenerated !== true) return 'rgba(128, 128, 128, 0.55)'
+  if (status.defaultPreset === 'qwen38-qol') return '#4ade80'
+  return '#fbbf24'
+}
+
 /** One editable field row: label above a controlled input. */
 function Field({ label, hint, children }) {
   return React.createElement('div', { style: { marginBottom: 12 } },
@@ -522,7 +534,10 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
     // sessions using the qwen38-qol preset), then the trim knobs.
     React.createElement('div', null,
       React.createElement('div', { style: { fontSize: 12, marginBottom: 4, opacity: 0.75 } }, t.compaction),
-      React.createElement('div', { style: { fontSize: 11, opacity: 0.75, lineHeight: 1.4, marginBottom: 4 } }, compactionStatusCopy(view.value.compaction, t)),
+      React.createElement('div', { style: { fontSize: 11, opacity: 0.75, lineHeight: 1.4, marginBottom: 4, display: 'flex', alignItems: 'flex-start', gap: 6 } },
+        React.createElement('span', { 'aria-hidden': true, style: { width: 8, height: 8, borderRadius: '50%', background: compactionStatusColor(view.value.compaction), flex: 'none', marginTop: 3 } }),
+        compactionStatusCopy(view.value.compaction, t),
+      ),
       React.createElement('div', { style: { fontSize: 11, opacity: 0.55, lineHeight: 1.4, marginBottom: 12 } }, t.compactionHint),
       React.createElement(Field, { label: t.summarizeImages },
         React.createElement(ThemeSelect, {
