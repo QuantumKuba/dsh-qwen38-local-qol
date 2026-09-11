@@ -101,6 +101,13 @@ export function sectionSchema() {
       keepTurns: Schema.number().default(DEFAULT_TRIM_KNOBS.keepTurns),
       toolChars: Schema.number().default(DEFAULT_TRIM_KNOBS.toolChars),
     }),
+    // The compaction wiring status the tab renders (the host reads it at boot
+    // into the section base): the trim controls apply only to sessions using
+    // the qwen38-qol preset, so the tab states which preset new sessions take.
+    compaction: Schema.object({
+      presetGenerated: Schema.boolean().default(false),
+      defaultPreset: Schema.string().default('standard'),
+    }),
   })
 }
 
@@ -166,5 +173,13 @@ export function validateSection(value) {
     if (!Number.isInteger(raw) || raw < 0) {
       throw new Error(`dsh-qwen38-local-qol: summarize.${knob} must be a non-negative integer, got ${String(raw)}`)
     }
+  }
+  // The status fields ride the section base; a hand-edited document must not
+  // park a non-boolean flag or an empty preset id the tab would render.
+  if (typeof value.compaction?.presetGenerated !== 'boolean') {
+    throw new Error(`dsh-qwen38-local-qol: compaction.presetGenerated must be a boolean, got ${String(value.compaction?.presetGenerated)}`)
+  }
+  if (typeof value.compaction?.defaultPreset !== 'string' || value.compaction.defaultPreset.trim() === '') {
+    throw new Error(`dsh-qwen38-local-qol: compaction.defaultPreset must be a non-empty string, got ${String(value.compaction?.defaultPreset)}`)
   }
 }

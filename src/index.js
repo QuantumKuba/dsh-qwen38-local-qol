@@ -12,6 +12,7 @@
 import { QwenLocalAdapter } from './adapter.js'
 import { resolveConfig, DEFAULT_PROVIDER } from './config.js'
 import { NS, sectionSchema, validateSection } from './settings-section.js'
+import { resolveDshHome, readCompactionStatus } from './setup.js'
 
 export { QwenLocalAdapter, PROVIDER_NAME, PROVIDER_HTTP_ERROR_CODE, PROVIDER_UNREACHABLE_CODE } from './adapter.js'
 export {
@@ -37,6 +38,11 @@ export function apply(ctx, config = {}) {
   const resolved = resolveConfig(config)
   let current = () => resolved
   let attachment
+  // The compaction wiring status the settings tab renders: computed once at
+  // boot (the section base is static for the process lifetime), so it is
+  // current as of this DSH start — a setup run or a preset-default change
+  // shows up on the next start.
+  const compaction = readCompactionStatus(resolveDshHome())
   // The user-settings seam is a declared injection, not a store read: every
   // dsh profile mounts a settings provider (the base bundle's settings-file
   // row), and `ctx.inject` waits for it. A `ctx.get('settings')` read races the
@@ -45,7 +51,7 @@ export function apply(ctx, config = {}) {
   // fully resolved row is the base: the installSection detach fallback is the
   // base value verbatim, so it must already carry every field.
   ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.installSection(ctx, NS, sectionSchema(), resolved, {
+    settingsCtx.settings.installSection(ctx, NS, sectionSchema(), { ...resolved, compaction }, {
       setSource: (source) => { current = source },
       onChange: () => {},
       validate: validateSection,

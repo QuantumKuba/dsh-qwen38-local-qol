@@ -167,3 +167,13 @@ test('validateSection: negative summarize knobs fail loud', () => {
   const value = { ...sectionSchema()({}), summarize: { images: 'strip', keepTurns: -1, toolChars: 2000 } }
   assert.throws(() => validateSection(value), /summarize\.keepTurns must be/)
 })
+
+test('sectionSchema: the compaction wiring status defaults to unset', () => {
+  const resolved = sectionSchema()({})
+  assert.deepEqual(resolved.compaction, { presetGenerated: false, defaultPreset: 'standard' })
+})
+
+test('validateSection: a hand-edited compaction status fails loud', () => {
+  assert.throws(() => validateSection({ ...sectionSchema()({}), compaction: { presetGenerated: 'yes', defaultPreset: 'standard' } }), /presetGenerated must be a boolean/)
+  assert.throws(() => validateSection({ ...sectionSchema()({}), compaction: { presetGenerated: true, defaultPreset: '' } }), /defaultPreset must be a non-empty string/)
+})

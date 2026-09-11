@@ -21,6 +21,10 @@
  * agent-preset picker reads for its name/description) is written with the
  * generated preset so the card does not read "no description".
  *
+ * The module also exports the compaction wiring status the settings tab shows
+ * (readCompactionStatus): whether the generated preset exists and which agent
+ * preset new sessions default to.
+ *
  * Usage:
  *   node src/setup.js [--src <preset agent.cordis.yml>]
  *   DSH_QWEN38_PRESET_SRC=<path> node src/setup.js
@@ -201,6 +205,46 @@ export function ensureDefaultPreset(dshHome) {
 export function renderPresetMetadata() {
   const body = PRESET_DESCRIPTION.split('\n').map((line) => `  ${line}`).join('\n')
   return `description: |-\n${body}\n`
+}
+
+/**
+ * Read the default agent preset from a `settings.yaml` text. Lenient read for
+ * status display (contrast the strict writer): the first top-level
+ * `agent-presets:` plain block's first `default:` key; an inline entry, a
+ * duplicated section, or a section without the key all answer undefined.
+ * @param text - the settings.yaml content; '' for a missing or empty file.
+ * @returns the default preset id, or undefined.
+ */
+export function readDefaultAgentPreset(text) {
+  const lines = text.split('\n')
+  let sectionIndex = -1
+  for (let i = 0; i < lines.length; i += 1) {
+    if (/^agent-presets:\s*$/.test(lines[i])) { sectionIndex = i; break }
+  }
+  if (sectionIndex === -1) return undefined
+  let sectionEnd = lines.length
+  for (let i = sectionIndex + 1; i < lines.length; i += 1) {
+    if (/^[^\s#]/.test(lines[i])) { sectionEnd = i; break }
+  }
+  for (let i = sectionIndex + 1; i < sectionEnd; i += 1) {
+    const match = lines[i].match(/^\s+default:\s*(\S+)/)
+    if (match !== null) return match[1]
+  }
+  return undefined
+}
+
+/**
+ * Read the compaction wiring status for the settings tab: whether the
+ * generated preset exists and which agent preset new sessions default to
+ * ('standard' when the settings carry no `agent-presets.default`).
+ * @param dshHome - the DSH home directory.
+ * @returns `{ presetGenerated, defaultPreset }`.
+ */
+export function readCompactionStatus(dshHome) {
+  const presetGenerated = existsSync(join(dshHome, USER_PRESET_DIR, PRESET_ID, 'agent.cordis.yml'))
+  const settingsPath = join(dshHome, SETTINGS_FILE)
+  const parsed = existsSync(settingsPath) ? readDefaultAgentPreset(readFileSync(settingsPath, 'utf8')) : undefined
+  return { presetGenerated, defaultPreset: parsed ?? 'standard' }
 }
 
 /**

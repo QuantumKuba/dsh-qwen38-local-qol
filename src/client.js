@@ -53,6 +53,10 @@ const COPY = {
     conflict: 'Someone else changed these settings while you were editing. Your edits were discarded; the current values are shown.',
     invalidNumber: 'Every number field must be a positive whole number.',
     remoteError: 'Settings request failed: ',
+    compactionNotSet: 'Local compaction is not set up — the trim controls below apply once the qwen38-qol preset is generated (one-time setup, see the plugin README).',
+    compactionActive: 'Local compaction is active for new sessions (default preset: qwen38-qol).',
+    compactionAvailable: 'Local compaction is available, but the default preset is "{default}" — new sessions use standard compaction. Select qwen38-qol on the Agent presets page to enable it.',
+    compactionHint: 'The trim controls apply to sessions using the qwen38-qol preset; compaction thinking-off and the output cap apply to every qwen38 session on the wire.',
   },
   zh: {
     title: 'Qwen3.8 本地',
@@ -84,7 +88,25 @@ const COPY = {
     conflict: '编辑期间他人修改了这些设置。你的改动已丢弃，当前显示的是最新值。',
     invalidNumber: '所有数字字段必须是正整数。',
     remoteError: '设置请求失败：',
+    compactionNotSet: '本地压缩未启用——生成 qwen38-qol 预设（一次性 setup，见插件 README）后，下方裁剪设置才会生效。',
+    compactionActive: '本地压缩对新会话生效（默认预设：qwen38-qol）。',
+    compactionAvailable: '本地压缩可用，但默认预设是 "{default}"——新会话走标准压缩。在 Agent 预设页选择 qwen38-qol 启用。',
+    compactionHint: '裁剪设置仅对使用 qwen38-qol 预设的会话生效；压缩 thinking off 与输出帽在 wire 层对所有 qwen38 会话常开。',
   },
+}
+
+/**
+ * The compaction wiring status line for the settings tab: whether the local
+ * compaction backend is actually reachable by new sessions.
+ * @param status - the host-computed `{ presetGenerated, defaultPreset }`
+ *   (undefined when the section predates the status field).
+ * @param t - the locale copy.
+ * @returns the status sentence (the available state substitutes the preset id).
+ */
+export function compactionStatusCopy(status, t) {
+  if (status === undefined || status.presetGenerated !== true) return t.compactionNotSet
+  if (status.defaultPreset === 'qwen38-qol') return t.compactionActive
+  return t.compactionAvailable.replace('{default}', String(status.defaultPreset))
 }
 
 /** One editable field row: label above a controlled input. */
@@ -496,8 +518,12 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
       ),
       React.createElement('div', { style: { fontSize: 11, opacity: 0.6, marginTop: 4, marginBottom: 12, lineHeight: 1.4 } }, draft.dialect === 'ninfer' ? t.thinkingHintNinfer : t.thinkingHintLlamacpp),
     ),
+    // Compaction: the wiring status first (the trim controls only apply to
+    // sessions using the qwen38-qol preset), then the trim knobs.
     React.createElement('div', null,
       React.createElement('div', { style: { fontSize: 12, marginBottom: 4, opacity: 0.75 } }, t.compaction),
+      React.createElement('div', { style: { fontSize: 11, opacity: 0.75, lineHeight: 1.4, marginBottom: 4 } }, compactionStatusCopy(view.value.compaction, t)),
+      React.createElement('div', { style: { fontSize: 11, opacity: 0.55, lineHeight: 1.4, marginBottom: 12 } }, t.compactionHint),
       React.createElement(Field, { label: t.summarizeImages },
         React.createElement(ThemeSelect, {
           value: draft.images,

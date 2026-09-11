@@ -27,6 +27,7 @@ function fakeCtx(overrides = {}) {
         thinkingLevelMap: {},
         includeUsage: true,
         summarize: { images: 'strip', keepTurns: 5, toolChars: 2000 },
+        compaction: { presetGenerated: true, defaultPreset: 'qwen38-qol' },
       },
     }],
   }
@@ -57,6 +58,19 @@ test('client contract: named exports for the function-plugin loader', () => {
   assert.equal(client.name, 'qwen38-local-qol')
   assert.deepEqual(client.inject, ['slots', 'locale', 'remote', 'remote.settings'])
   assert.equal(typeof client.apply, 'function')
+  assert.equal(typeof client.compactionStatusCopy, 'function')
+})
+
+test('compactionStatusCopy: the three wiring states', () => {
+  const t = {
+    compactionNotSet: 'not-set',
+    compactionActive: 'active',
+    compactionAvailable: 'available: {default}',
+  }
+  assert.equal(client.compactionStatusCopy(undefined, t), 'not-set')
+  assert.equal(client.compactionStatusCopy({ presetGenerated: false, defaultPreset: 'standard' }, t), 'not-set')
+  assert.equal(client.compactionStatusCopy({ presetGenerated: true, defaultPreset: 'qwen38-qol' }, t), 'active')
+  assert.equal(client.compactionStatusCopy({ presetGenerated: true, defaultPreset: 'standard' }, t), 'available: standard')
 })
 
 test('client: registers one settings.section page with a localized label', () => {

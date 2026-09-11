@@ -164,6 +164,14 @@ The tab, both lines:
 |---|---|
 | ![llama.cpp line](docs/screenshot-llama-en.png) | ![NInfer line](docs/screenshot-ninfer-en.png) |
 
+- **Compaction wiring status**: the Compaction section starts with the status
+  of the local compaction backend as of DSH startup: whether the generated
+  `qwen38-qol` preset exists and which agent preset new sessions default to.
+  It matters because the trim knobs apply only to sessions that use the
+  `qwen38-qol` preset (the preset layer), while the wire-layer rules
+  (compaction thinking-off and the output cap) apply to every qwen38 session
+  regardless of the preset. The status is read at boot, so running the setup
+  or changing the default preset shows up on the next DSH start.
 - **Per-dialect line memory**: the section persists a `lines` block
   (`lines.ninfer` / `lines.llamacpp`) where each line remembers its own
   connection (`baseURL` / `model` / `displayName`), its own window numbers
@@ -440,6 +448,11 @@ tab 实况（两条线）：
 |---|---|
 | ![llama.cpp 线](docs/screenshot-llama-zh.png) | ![NInfer 线](docs/screenshot-ninfer-zh.png) |
 
+- **压缩接线状态**：压缩段开头显示本地压缩后端在 DSH 启动时的状态：生成的
+  `qwen38-qol` 预设是否存在、新会话默认用哪个 agent 预设。有意义是因为裁剪
+  旋钮只对使用 `qwen38-qol` 预设的会话生效（preset 层），而 wire 层规则
+  （压缩 thinking off 与输出帽）对所有 qwen38 会话常开、与预设无关。状态在
+  启动时读取——跑 setup 或改默认预设后，下次 DSH 启动生效。
 - **按方言的线记忆**：section 持久化 `lines` 块（`lines.ninfer` /
   `lines.llamacpp`），每条线记住自己的连接（`baseURL` / `model` /
   `displayName`）、窗口数字（`contextWindow` / `maxTokens` /

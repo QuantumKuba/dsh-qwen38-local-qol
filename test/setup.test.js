@@ -4,6 +4,9 @@
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
   transformPreset,
   findNameLine,
@@ -11,6 +14,8 @@ import {
   BACKEND_MAX_TOKENS,
   applyDefaultPreset,
   renderPresetMetadata,
+  readDefaultAgentPreset,
+  readCompactionStatus,
   PRESET_ID,
   PRESET_DESCRIPTION,
 } from '../src/setup.js'
@@ -162,4 +167,30 @@ test('applyDefaultPreset: leaves a nested agent-presets key alone', () => {
 test('renderPresetMetadata: publishes the bilingual description as a YAML block scalar', () => {
   assert.equal(PRESET_DESCRIPTION, '标准模式 + 自定义压缩 | Standard mode + custom compaction')
   assert.equal(renderPresetMetadata(), 'description: |-\n  标准模式 + 自定义压缩 | Standard mode + custom compaction\n')
+})
+
+test('readDefaultAgentPreset: lenient read of the default preset key', () => {
+  assert.equal(readDefaultAgentPreset('agent-presets:\n  default: standard\n  enabled: true\nlocale:\n  preference: zh\n'), 'standard')
+  assert.equal(readDefaultAgentPreset('agent-presets:\n  enabled: true\nlocale:\n  preference: zh\n'), undefined)
+  assert.equal(readDefaultAgentPreset('locale:\n  preference: zh\n'), undefined)
+  assert.equal(readDefaultAgentPreset('agent-presets: {}\n'), undefined)
+  assert.equal(readDefaultAgentPreset('plugins:\n  agent-presets: true\n'), undefined)
+  assert.equal(readDefaultAgentPreset(''), undefined)
+  assert.equal(readDefaultAgentPreset('agent-presets:\r\n  default: qwen38-qol\r\n'), 'qwen38-qol')
+  // Duplicated sections: the first one wins.
+  assert.equal(readDefaultAgentPreset('agent-presets:\n  default: standard\nagent-presets:\n  default: qwen38-qol\n'), 'standard')
+})
+
+test('readCompactionStatus: reports the preset existence and the default preset', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'qol-compaction-status-'))
+  try {
+    assert.deepEqual(readCompactionStatus(dir), { presetGenerated: false, defaultPreset: 'standard' })
+    writeFileSync(join(dir, 'settings.yaml'), 'agent-presets:\n  default: qwen38-qol\n')
+    assert.deepEqual(readCompactionStatus(dir), { presetGenerated: false, defaultPreset: 'qwen38-qol' })
+    mkdirSync(join(dir, '.agent-presets', 'qwen38-qol'), { recursive: true })
+    writeFileSync(join(dir, '.agent-presets', 'qwen38-qol', 'agent.cordis.yml'), '- id: agent\n')
+    assert.deepEqual(readCompactionStatus(dir), { presetGenerated: true, defaultPreset: 'qwen38-qol' })
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
