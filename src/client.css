@@ -102,13 +102,12 @@
   accent-color: var(--dsw-alias-brand-primary);
 }
 
-/* Two-field rows: the same treatment as the effort-cap row below, with the
-   field width chosen so the middle gap lands on the same 42px as that row's
-   (both rows live inside the 576px content width left after the scrollbar
-   inset). */
+/* Two-field rows: the fields take the effort-cap row's width so the middle
+   gap is unmissable; space-between still spans the row across the content
+   edge. */
 .qol-row2 {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 267px));
+  grid-template-columns: repeat(2, minmax(0, 164px));
   gap: 12px;
   justify-content: space-between;
 }
