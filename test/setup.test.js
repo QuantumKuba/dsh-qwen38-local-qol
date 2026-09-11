@@ -183,7 +183,7 @@ test('readDefaultAgentPreset: lenient read of the default preset key', () => {
   assert.equal(readDefaultAgentPreset('agent-presets:\n  default: standard\nagent-presets:\n  default: qwen38-qol\n'), 'standard')
 })
 
-test('writeGeneratedPreset: one-shot write refuses an existing preset, CLI path backs up', () => {
+test('writeGeneratedPreset: one-shot write refuses an existing preset; re-runs back up only changed files', () => {
   const home = mkdtempSync(join(tmpdir(), 'qol-write-preset-'))
   const sourceText = PRESET
   try {
@@ -191,10 +191,18 @@ test('writeGeneratedPreset: one-shot write refuses an existing preset, CLI path 
     assert.ok(existsSync(first.preset))
     assert.ok(existsSync(first.metadata))
     assert.throws(() => writeGeneratedPreset(home, sourceText, { overwrite: false }), /already exists/)
+    // Same composition again: a no-op — no rewrite, no new backup.
+    const before = readdirSync(dirname(first.preset)).sort()
     const second = writeGeneratedPreset(home, sourceText, { overwrite: true })
     assert.ok(existsSync(second.preset))
-    const backups = readdirSync(dirname(second.preset)).filter((name) => name.includes('.bak-'))
-    assert.ok(backups.length >= 2)
+    assert.deepEqual(readdirSync(dirname(second.preset)).sort(), before)
+    // A changed composition: only the file that actually changed gets a dated
+    // backup (the unchanged metadata does not), then the new content.
+    writeGeneratedPreset(home, `${sourceText}\n# regenerated\n`, { overwrite: true })
+    const backups = readdirSync(dirname(first.preset)).filter((name) => name.includes('.bak-'))
+    assert.equal(backups.length, 1)
+    assert.match(backups[0], /agent\.cordis\.yml\.bak-/)
+    assert.match(readFileSync(first.preset, 'utf8'), /# regenerated/)
   } finally {
     rmSync(home, { recursive: true, force: true })
   }

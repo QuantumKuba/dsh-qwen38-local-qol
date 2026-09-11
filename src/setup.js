@@ -7,10 +7,11 @@
  *
  * Reads the installed standard preset's `agent.cordis.yml`, swaps the
  * `compaction-basic` row for this package's backend (and pins its
- * `maxTokens`), and writes `~/.dsh/.agent-presets/qwen38-qol/agent.cordis.yml`
- * (a dated backup replaces any earlier generated copy). The generated preset
- * is regenerated from the live installed preset on every run, so it tracks
- * DSH releases without a re-cut diff.
+ * `maxTokens`), and writes `~/.dsh/.agent-presets/qwen38-qol/agent.cordis.yml`.
+ * The generated preset is regenerated from the live installed preset on every
+ * run, so it tracks DSH releases without a re-cut diff — but only files whose
+ * content actually changed are written, and only those get a dated `.bak-`
+ * backup (a re-run with the same standard preset is a no-op).
  *
  * Also merges `agent-presets: { default: qwen38-qol }` into
  * `~/.dsh/settings.yaml` (a dated backup of the file when it changed) so new
@@ -258,14 +259,31 @@ export function readCompactionStatus(dshHome) {
 }
 
 /**
+ * Write `text` to `path`, touching the file only when its content actually
+ * changes: an unchanged file is left as-is (no write, no backup), a changed
+ * existing file is first copied to a dated `.bak-<timestamp>` sibling, and a
+ * missing file is simply written.
+ * @param path - the file to write.
+ * @param text - the content to write.
+ */
+function writeIfChanged(path, text) {
+  if (existsSync(path) && readFileSync(path, 'utf8') === text) return
+  if (existsSync(path)) copyFileSync(path, `${path}.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`)
+  writeFileSync(path, text)
+}
+
+/**
  * Transform the standard composition and write the generated preset files
- * (composition + display metadata) into the DSH home.
+ * (composition + display metadata) into the DSH home. Only files whose
+ * content actually changed are written, and only those get a dated `.bak-`
+ * backup — a re-run with the same standard composition is a no-op.
  * @param dshHome - the DSH home directory.
  * @param sourceText - the standard preset's composition text.
  * @param options - the write behavior.
- * @param options.overwrite - when true (the CLI re-run path) an existing
- *   preset is backed up and replaced; when false (the boot auto-apply path)
- *   an existing preset fails the write instead of being touched.
+ * @param options.overwrite - when true (the CLI re-run path) changed existing
+ *   preset files are backed up and replaced, unchanged ones are left as-is;
+ *   when false (the boot auto-apply path) an existing preset fails the write
+ *   instead of being touched.
  * @returns the written preset and metadata paths.
  * @throws {Error} when the preset already exists and overwrite is false.
  */
@@ -277,11 +295,9 @@ export function writeGeneratedPreset(dshHome, sourceText, { overwrite = true } =
   if (!overwrite && (existsSync(target) || existsSync(metadataTarget))) {
     throw new Error(`dsh-qwen38-local-qol: setup: the preset already exists at ${target}; remove it to regenerate`)
   }
-  if (existsSync(target)) copyFileSync(target, `${target}.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`)
   mkdirSync(dir, { recursive: true })
-  writeFileSync(target, transformed)
-  if (existsSync(metadataTarget)) copyFileSync(metadataTarget, `${metadataTarget}.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`)
-  writeFileSync(metadataTarget, renderPresetMetadata())
+  writeIfChanged(target, transformed)
+  writeIfChanged(metadataTarget, renderPresetMetadata())
   return { preset: target, metadata: metadataTarget }
 }
 
