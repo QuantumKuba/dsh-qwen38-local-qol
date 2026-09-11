@@ -45,11 +45,16 @@ One package, three registrations:
 ```sh
 # same as any other plugin (add --profile <name> for a non-default profile):
 dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
-# plugin-specific one-time step — generate the compaction user preset (dated backup on re-run):
+# plugin-specific one-time step — generate the compaction user preset AND set
+# it as the default agent preset in ~/.dsh/settings.yaml (a dated backup of
+# each file it changes, on re-run):
 node_modules/dsh-qwen38-local-qol/src/setup.js --src <path to the installed @deepseek-ai/dsh-agent-presets presets/standard/agent.cordis.yml>
 ```
 
-Then select the **`qwen38-qol`** agent preset in the GUI (per session).
+New sessions then use **`qwen38-qol`** automatically. Existing sessions keep
+the preset they were created with — select **`qwen38-qol`** in the GUI to
+switch one, or remove the `agent-presets:` section from `~/.dsh/settings.yaml`
+to keep `standard` as the default.
 
 `dsh --profile <name> --patch <plugin>/cordis.patch.yml --dump-config` shows
 the composed provider row without booting.
@@ -89,8 +94,9 @@ rm -rf ~/.dsh/.agent-presets/qwen38-qol
 # Windows: C:\Users\<you>\.dsh\.agent-presets\qwen38-qol
 
 # 3. tidy settings.yaml — the preset default must go, the rest is optional:
-#    - agent-presets: { default: qwen38-qol }  (a default pointing at a deleted
-#      preset breaks preset resolution)
+#    - agent-presets: { default: qwen38-qol }  (written by setup.js, which kept
+#      a settings.yaml.bak-* copy; a default pointing at a deleted preset
+#      breaks preset resolution)
 #    - the qwen38-local-qol: section block     (orphaned namespace; harmless if
 #      left, cleaner removed)
 #    - any DSH_QWEN38_* environment variables you set
@@ -281,9 +287,11 @@ the settings section.
   route works in both surfaces. Until the upstream opens a preset/settings
   seam for headless, headless users keep the compaction change on the core
   patch chain.
-- **Default preset.** The generated preset is selected per session in the
-  GUI, or made the default with the user setting
-  `agent-presets: { default: qwen38-qol }` in `settings.yaml`.
+- **Default preset.** `setup.js` writes
+  `agent-presets: { default: qwen38-qol }` into `settings.yaml` (a dated
+  backup of the file is kept), so new sessions use the generated preset
+  automatically; existing sessions select it per session in the GUI. To keep a
+  different default, remove or edit that section.
 
 ---
 
@@ -326,11 +334,14 @@ the settings section.
 ```sh
 # 与其他插件相同（非默认 profile 加 --profile <name>）：
 dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
-# 本插件特有的一次性步骤——生成压缩用户 preset（重跑会留日期备份）：
+# 本插件特有的一次性步骤——生成压缩用户 preset，并把 agent preset 默认设为
+# qwen38-qol（重跑对它改动的每个文件各留日期备份）：
 node_modules/dsh-qwen38-local-qol/src/setup.js --src <已安装的 @deepseek-ai/dsh-agent-presets 的 presets/standard/agent.cordis.yml 路径>
 ```
 
-然后在 GUI 里选择 **`qwen38-qol`** agent preset（每会话）。
+新会话随后自动使用 **`qwen38-qol`**。已有会话保留创建时的 preset——在 GUI
+里选择 `qwen38-qol` 切换单个会话，或从 `~/.dsh/settings.yaml` 删掉
+`agent-presets:` 段保持 `standard` 为默认。
 
 `dsh --profile <name> --patch <plugin>/cordis.patch.yml --dump-config`
 可在不启动的情况下查看组合后的 provider 行。
@@ -366,8 +377,9 @@ rm -rf ~/.dsh/.agent-presets/qwen38-qol
 # Windows：C:\Users\<你>\.dsh\.agent-presets\qwen38-qol
 
 # 3. 清理 settings.yaml——preset 默认项必须删，其余可选：
-#    - agent-presets: { default: qwen38-qol }（默认项指向已删除的 preset
-#      会让 preset 解析报错）
+#    - agent-presets: { default: qwen38-qol }（setup.js 写入，留有
+#      settings.yaml.bak-* 备份；默认项指向已删除的 preset 会让
+#      preset 解析报错）
 #    - qwen38-local-qol: 设置节（孤儿命名空间，留着无害、删了更干净）
 #    - 你设置过的 DSH_QWEN38_* 环境变量
 
@@ -526,5 +538,6 @@ section 另有 `@deepseek-ai/schemastery ^3.18.1` 与 `react ^18.2.0`。
   行，其会话是裸 agent，生成的 preset 压缩后端在那里不生效；provider 路由
   两面都工作。上游为 headless 打开 preset/settings 接缝之前，headless
   用户的压缩改动保留在核心补丁链上。
-- **默认 preset。** 生成的 preset 在 GUI 里每会话选择，或在 `settings.yaml`
-  里用用户设置 `agent-presets: { default: qwen38-qol }` 设为默认。
+- **默认 preset。** `setup.js` 会把 `agent-presets: { default: qwen38-qol }`
+  写入 `settings.yaml`（该文件留日期备份），新会话自动使用生成的 preset；
+  已有会话在 GUI 里每会话选择。想保持别的默认，删掉或改这一节即可。

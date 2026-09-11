@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Generate the user preset that mounts the Qwen3.8 compaction backend inside
- * the agent preset's isolated compaction group.
+ * the agent preset's isolated compaction group, and set that preset as the
+ * default agent preset.
  *
  * Reads the installed standard preset's `agent.cordis.yml`, swaps the
  * `compaction-basic` row for this package's backend (and pins its
@@ -9,6 +10,11 @@
  * (a dated backup replaces any earlier generated copy). The generated preset
  * is regenerated from the live installed preset on every run, so it tracks
  * DSH releases without a re-cut diff.
+ *
+ * Also merges `agent-presets: { default: qwen38-qol }` into
+ * `~/.dsh/settings.yaml` (a dated backup of the file when it changed) so new
+ * sessions use the preset automatically; an already-set default is left
+ * untouched (idempotent re-runs).
  *
  * Usage:
  *   node src/setup.js [--src <preset agent.cordis.yml>]
@@ -36,6 +42,12 @@ export const BACKEND_ROW_ID = 'compaction-basic'
 export const BACKEND_PACKAGE = 'dsh-qwen38-local-qol/backend'
 /** The stock config value pinned on the backend row (8192 truncates long local checkpoints; 16384 proved tight on the 125B line). */
 export const BACKEND_MAX_TOKENS = 24576
+/** The user settings file at the DSH home root. */
+export const SETTINGS_FILE = 'settings.yaml'
+/** The settings section that carries the default agent preset. */
+export const AGENT_PRESETS_SECTION = 'agent-presets'
+/** The key inside that section. */
+export const DEFAULT_KEY = 'default'
 
 /**
  * Resolve the DSH home directory.
@@ -94,11 +106,91 @@ export function transformPreset(text) {
 }
 
 /**
- * Run the generator.
+ * Merge `agent-presets: { default: qwen38-qol }` into a `settings.yaml`
+ * text. Strict anchors: at most one top-level `agent-presets:` block line and
+ * at most one `default:` key inside it; an inline value, a duplicated
+ * section, or a duplicated key fails loud instead of writing a guess. Line
+ * endings are preserved on replace. Idempotent: an existing
+ * `default: qwen38-qol` returns the text unchanged.
+ * @param text - the settings.yaml content; '' for a missing or empty file.
+ * @returns the new text and what changed: 'created', 'appended', 'replaced',
+ *   or 'none'.
+ */
+export function applyDefaultPreset(text) {
+  const lines = text.split('\n')
+  const sectionIndices = []
+  for (let i = 0; i < lines.length; i += 1) {
+    if (/^agent-presets:/.test(lines[i])) sectionIndices.push(i)
+  }
+  if (sectionIndices.length > 1) {
+    throw new Error('dsh-qwen38-local-qol: setup: settings.yaml has two top-level agent-presets sections; remove one and re-run')
+  }
+  if (sectionIndices.length === 1) {
+    const sectionIndex = sectionIndices[0]
+    if (!/^agent-presets:\s*$/.test(lines[sectionIndex])) {
+      throw new Error('dsh-qwen38-local-qol: setup: settings.yaml carries an inline agent-presets entry (for example "agent-presets: {}"); make it a plain block and re-run')
+    }
+    let sectionEnd = lines.length
+    for (let i = sectionIndex + 1; i < lines.length; i += 1) {
+      if (/^[^\s#]/.test(lines[i])) {
+        sectionEnd = i
+        break
+      }
+    }
+    const defaultIndices = []
+    for (let i = sectionIndex + 1; i < sectionEnd; i += 1) {
+      if (/^\s+default:\s*\S/.test(lines[i])) defaultIndices.push(i)
+    }
+    if (defaultIndices.length > 1) {
+      throw new Error('dsh-qwen38-local-qol: setup: the agent-presets section has more than one default key; remove one and re-run')
+    }
+    if (defaultIndices.length === 1) {
+      const match = lines[defaultIndices[0]].match(/^(\s*)default:(\s*)(\S+)\s*$/)
+      if (match[3] === PRESET_ID) return { text, changed: 'none' }
+      const eol = /\r$/.test(lines[defaultIndices[0]]) ? '\r' : ''
+      lines[defaultIndices[0]] = `${match[1]}default:${match[2]}${PRESET_ID}${eol}`
+      return { text: lines.join('\n'), changed: 'replaced' }
+    }
+    const eol = /\r$/.test(lines[sectionIndex]) ? '\r' : ''
+    lines.splice(sectionIndex + 1, 0, `  ${DEFAULT_KEY}: ${PRESET_ID}${eol}`)
+    return { text: lines.join('\n'), changed: 'appended' }
+  }
+  const eol = /\r\n/.test(text) ? '\r\n' : '\n'
+  let base = text
+  if (base !== '' && !/[\r\n]$/.test(base)) base += '\n'
+  return {
+    text: base + `${AGENT_PRESETS_SECTION}:${eol}  ${DEFAULT_KEY}: ${PRESET_ID}${eol}`,
+    changed: text.trim() === '' ? 'created' : 'appended',
+  }
+}
+
+/**
+ * Write the default agent preset into the DSH home's settings.yaml. A dated
+ * backup of the file is written before a change; an already-set default is
+ * left untouched, so re-runs are idempotent.
+ * @param dshHome - the DSH home directory.
+ * @returns the settings file path and what changed ('created', 'appended',
+ *   'replaced', or 'none').
+ */
+export function ensureDefaultPreset(dshHome) {
+  const path = join(dshHome, SETTINGS_FILE)
+  const text = existsSync(path) ? readFileSync(path, 'utf8') : ''
+  const { text: next, changed } = applyDefaultPreset(text)
+  if (changed !== 'none') {
+    if (existsSync(path)) copyFileSync(path, `${path}.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`)
+    writeFileSync(path, next)
+  }
+  return { path, changed }
+}
+
+/**
+ * Run the generator: write the user preset, then set it as the default agent
+ * preset in the DSH home's settings.yaml.
  * @param options - CLI options.
  * @param options.src - explicit path to the installed standard preset's agent.cordis.yml.
  * @param options.home - DSH home override (defaults to env DSH_HOME or ~/.dsh).
- * @returns the absolute path of the written preset file.
+ * @returns the written preset path, the settings file path, and what the
+ *   default step changed ('created', 'appended', 'replaced', or 'none').
  */
 export function generatePreset({ src, home } = {}) {
   const dshHome = home ?? resolveDshHome()
@@ -119,7 +211,8 @@ export function generatePreset({ src, home } = {}) {
   }
   mkdirSync(dir, { recursive: true })
   writeFileSync(target, transformed)
-  return target
+  const { path: settings, changed } = ensureDefaultPreset(dshHome)
+  return { preset: target, settings, defaultChanged: changed }
 }
 
 const argv = process.argv.slice(2)
@@ -127,9 +220,14 @@ const srcFlag = argv.indexOf('--src')
 const cliSrc = srcFlag !== -1 ? argv[srcFlag + 1] : undefined
 if (process.argv[1] && process.argv[1].endsWith('setup.js')) {
   try {
-    const written = generatePreset({ src: cliSrc })
-    console.log(`dsh-qwen38-local-qol: preset written to ${written}`)
-    console.log(`dsh-qwen38-local-qol: select the "${PRESET_ID}" agent preset in the GUI (per session).`)
+    const { preset, settings, defaultChanged } = generatePreset({ src: cliSrc })
+    console.log(`dsh-qwen38-local-qol: preset written to ${preset}`)
+    if (defaultChanged === 'none') {
+      console.log(`dsh-qwen38-local-qol: the default agent preset is already "${PRESET_ID}" — ${settings} left as is.`)
+    } else {
+      console.log(`dsh-qwen38-local-qol: default agent preset set to "${PRESET_ID}" in ${settings} — new sessions use it automatically.`)
+    }
+    console.log(`dsh-qwen38-local-qol: existing sessions keep their preset — select "${PRESET_ID}" in the GUI to switch one.`)
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1
