@@ -11,12 +11,17 @@
  * plain text import injected once as a <style> tag — see client.js.
  */
 
+/* The right inset clears the settings scrollbar: the shell's 24px content
+   padding is mostly consumed by the scrollbar thumb, so the section adds its
+   own clearance instead of ending flush against it. */
 .qol {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-sizing: border-box;
   width: 100%;
   max-width: 720px;
+  padding-right: 12px;
   color: var(--dsw-alias-label-primary);
 }
 
@@ -98,20 +103,22 @@
 }
 
 /* Two-field rows: the same treatment as the effort-cap row below, with the
-   field width chosen so the middle gap lands on the same 42px as that row's. */
+   field width chosen so the middle gap lands on the same 42px as that row's
+   (both rows live inside the 576px content width left after the scrollbar
+   inset). */
 .qol-row2 {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 273px));
+  grid-template-columns: repeat(2, minmax(0, 267px));
   gap: 12px;
   justify-content: space-between;
 }
 
-/* The effort-cap row: capped fields read as three separate inputs, while
-   space-between keeps the row ending at the settings content edge, the same
-   right edge as the official sections. */
+/* The effort-cap row: capped fields read as three separate inputs (42px
+   gaps at the 576px content width), and the row still ends at the content
+   edge. */
 .qol-row3 {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 168px));
+  grid-template-columns: repeat(3, minmax(0, 164px));
   gap: 12px;
   justify-content: space-between;
 }
