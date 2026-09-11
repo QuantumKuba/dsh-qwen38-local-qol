@@ -8,16 +8,24 @@
  * back so a concurrent editor (the settings document on disk, another
  * browser) is surfaced as a conflict and re-read, never silently overwritten.
  *
+ * Styled the way the host's own settings sections are: the shared
+ * `@deepseek-ai/dsh-client-ui-primitives` controls (Button, Input, Switch,
+ * StateDot) and the `--dsw-alias-*` design tokens; the page sheet is
+ * `client.css` (`qol-` prefixed classes, no CSS Modules) which the browser
+ * entry (`client-entry.js`) injects once as a `<style>` tag.
+ *
  * The source is `React.createElement` (no JSX) and is built by
- * `scripts/build-client.mjs` (esbuild, `react` external) into the DSH
- * client-module format — a self-registering classic script — committed as
- * `lib/client.js`. The styling is inline for the same reason. The dialect selector is
- * the headline control — it switches the thinking wire (NInfer vs
- * llama-server) for every request the plugin route serves.
+ * `scripts/build-client.mjs` (esbuild entry `src/client-entry.js`, `react`
+ * and the primitives package left external — the module table supplies both
+ * identities) into the DSH client-module format — a self-registering classic
+ * script — committed as `lib/client.js`. The dialect selector is the headline
+ * control — it switches the thinking wire (NInfer vs llama-server) for every
+ * request the plugin route serves.
  *
  * @module dsh-qwen38-local-qol/client
  */
 import * as React from 'react'
+import { Button, Input, StateDot, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 
 /** The settings namespace this tab edits (mirrors the host's `NS`). */
 const NS = 'qwen38-local-qol'
@@ -44,8 +52,7 @@ const COPY = {
     thinkingHintLlamacpp: 'Hard per-effort thinking-token caps. llama.cpp honors reasoning_budget_tokens per request; the selected level\'s value overrides the server\'s --reasoning-budget flag.',
     compaction: 'Compaction prefill trim',
     summarizeImages: 'Images in the summarizer prefill',
-    strip: 'strip to placeholders (prefer with mmproj offload)',
-    keep: 'keep',
+    summarizeHint: 'Off strips images in the summarizer prefill to text placeholders (prefer with mmproj offload).',
     keepTurns: 'Keep reasoning of the last N turns',
     toolChars: 'Tool-result character cap (0 = off)',
     save: 'Save',
@@ -79,8 +86,7 @@ const COPY = {
     thinkingHintLlamacpp: '各 effort 档的 thinking token 硬帽。llama.cpp 逐请求按所选档携带 reasoning_budget_tokens，覆盖服务端 --reasoning-budget 参数。',
     compaction: '压缩预填充裁剪',
     summarizeImages: '摘要预填充里的图片',
-    strip: '替换为占位符（mmproj offload 时优选）',
-    keep: '保留',
+    summarizeHint: '关闭 = 摘要预填充里的图片替换为文本占位符（mmproj offload 时优选）。',
     keepTurns: '保留最近 N 轮的 reasoning',
     toolChars: '工具结果字数帽（0 = 关）',
     save: '保存',
@@ -113,147 +119,24 @@ export function compactionStatusCopy(status, t) {
 }
 
 /**
- * The status dot color for the compaction wiring line, so the state reads at
- * a glance instead of parsing the sentence.
+ * The StateDot state of the compaction wiring line, so the state reads at a
+ * glance instead of parsing the sentence: green done when the local
+ * compaction preset is the default, amber warning when the preset exists but
+ * is not the default, grey idle when it has not been generated.
  * @param status - the host-computed `{ presetGenerated, defaultPreset }`.
- * @returns the dot color (green = active, amber = available, grey = not set up).
+ * @returns the `StateDot` state ('done' | 'warning' | 'idle').
  */
-export function compactionStatusColor(status) {
-  if (status === undefined || status.presetGenerated !== true) return 'rgba(128, 128, 128, 0.55)'
-  if (status.defaultPreset === PRESET_ID) return '#4ade80'
-  return '#fbbf24'
+export function compactionStatusState(status) {
+  if (status === undefined || status.presetGenerated !== true) return 'idle'
+  if (status.defaultPreset === PRESET_ID) return 'done'
+  return 'warning'
 }
 
-/** One editable field row: label above a controlled input. */
-function Field({ label, hint, children }) {
-  return React.createElement('div', { style: { marginBottom: 12 } },
-    React.createElement('label', { style: { display: 'block', fontSize: 12, marginBottom: 4, opacity: 0.75 } }, label),
-    children,
-    hint === undefined ? null
-      : React.createElement('div', { style: { fontSize: 11, opacity: 0.6, marginTop: 4, lineHeight: 1.4 } }, hint),
-  )
-}
-
-const INPUT_STYLE = {
-  width: '100%',
-  boxSizing: 'border-box',
-  padding: '6px 8px',
-  fontSize: 13,
-  fontFamily: 'inherit',
-  border: '1px solid rgba(128, 128, 128, 0.3)',
-  borderRadius: 6,
-  background: 'transparent',
-  color: 'inherit',
-}
-
-/**
- * Two-choice dropdown matching the host's Menu primitive look: a themed
- * rounded card (var(--dsw-specific-menu) surface, r12, inverted hairline,
- * lv3 shadow), theme-aware row hover, a trailing check on the selected
- * row. The native <select> popup cannot follow the host theme (it stays
- * white on a dark dialog), so the control is a button + an absolute card
- * instead — the same construction the host's own settings rows use.
- */
-function ThemeSelect({ value, options, onChange }) {
-  const [open, setOpen] = React.useState(false)
-  const [hovered, setHovered] = React.useState(-1)
-  const rootRef = React.useRef(null)
-  const selected = options.find((option) => option.value === value) ?? options[0]
-
-  React.useEffect(() => {
-    if (!open) return
-    const onPointerDown = (event) => {
-      if (rootRef.current !== null && !rootRef.current.contains(event.target)) setOpen(false)
-    }
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open])
-
-  return React.createElement('div', { ref: rootRef, style: { position: 'relative' } },
-    React.createElement('button', {
-      type: 'button',
-      'aria-haspopup': 'listbox',
-      'aria-expanded': open,
-      onClick: () => setOpen(!open),
-      style: { ...INPUT_STYLE, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', textAlign: 'left' },
-    },
-      React.createElement('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, selected.label),
-      React.createElement('svg', {
-        width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
-        strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true,
-        style: { flex: 'none', opacity: 0.6 },
-      },
-        React.createElement('path', { d: 'M6 9l6 6 6-6' }),
-      ),
-    ),
-    open
-      ? React.createElement('div', {
-        role: 'listbox',
-        style: {
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 100,
-          padding: 4, boxSizing: 'border-box',
-          border: '1px solid var(--dsw-alias-border-inverted, rgba(128, 128, 128, 0.2))',
-          borderRadius: 12,
-          background: 'var(--dsw-specific-menu, #ffffff)',
-          boxShadow: 'var(--dsw-shadow-lv3, 0 8px 24px rgba(0, 0, 0, 0.24))',
-        },
-      },
-        options.map((option, index) =>
-          React.createElement('button', {
-            key: option.value,
-            type: 'button',
-            role: 'option',
-            'aria-selected': option.value === value,
-            onClick: () => { onChange(option.value); setOpen(false); setHovered(-1) },
-            onMouseEnter: () => setHovered(index),
-            onMouseLeave: () => setHovered(-1),
-            style: {
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-              width: '100%', minHeight: 40, padding: '8px 10px', boxSizing: 'border-box',
-              border: 'none', borderRadius: 10, cursor: 'pointer',
-              fontSize: 13, fontFamily: 'inherit', textAlign: 'left', color: 'inherit',
-              background: hovered === index
-                ? 'var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12))'
-                : 'transparent',
-            },
-          },
-            option.label,
-            option.value === value ? React.createElement('span', { style: { flex: 'none', fontSize: 12 } }, '✓') : null,
-          ),
-        ),
-      )
-      : null,
-  )
-}
-
-const BUTTON_STYLE = {
-  padding: '6px 18px',
-  fontSize: 13,
-  border: 'none',
-  borderRadius: 6,
-  background: 'rgba(128, 128, 128, 0.25)',
-  color: 'inherit',
-  cursor: 'pointer',
-}
-
-// Pin the page text to the host's primary label token instead of bare
-// inheritance: var(--dsw-alias-label-primary) flips on the host appearance
-// (light: near-black rgb(15,17,21) on the white panel; dark: near-white
-// rgb(249,250,251) on the dark panel). The background stays transparent —
-// the settings panel already renders the correct themed surface, so the
-// page rides it with no seam. The fallback covers a host without the
-// tokens. (label-primary-foreground is the inverted label *surface*, not
-// the text color — do not use it here.)
-const ROOT_STYLE = {
-  maxWidth: 560,
-  color: 'var(--dsw-alias-label-primary, #111111)',
+/** One editable field row: the host field pattern — a 12px label over a control. */
+function Field({ label, children }) {
+  return React.createElement('div', { className: 'qol-field' },
+    React.createElement('label', { className: 'qol-fieldLabel' }, label),
+    children)
 }
 
 /**
@@ -474,10 +357,10 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
   }
 
   if (state.status === 'loading') {
-    return React.createElement('div', { style: ROOT_STYLE }, t.loading)
+    return React.createElement('div', { className: 'qol' }, t.loading)
   }
   if (state.status === 'error') {
-    return React.createElement('div', { style: ROOT_STYLE }, state.error)
+    return React.createElement('div', { className: 'qol' }, state.error)
   }
   const { view, draft } = state
   // The status line: the startup snapshot (the section base) with the live
@@ -487,88 +370,94 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
     presetGenerated: (view.value.compaction ?? { presetGenerated: false }).presetGenerated,
     defaultPreset: state.agentPresets?.defaultPreset ?? view.value.compaction?.defaultPreset ?? 'standard',
   }
-  return React.createElement('div', { style: ROOT_STYLE },
-    React.createElement('h2', { style: { marginTop: 0 } }, t.title),
+  const ninfer = draft.dialect === 'ninfer'
+  return React.createElement('div', { className: 'qol' },
+    React.createElement('h2', { className: 'qol-title' }, t.title),
     state.error !== null
-      ? React.createElement('div', { style: { fontSize: 12, opacity: 0.8, marginBottom: 12 } }, state.error)
+      ? React.createElement('p', { className: 'qol-error', role: 'alert' }, state.error)
       : null,
-    React.createElement('div', null,
-      React.createElement('div', { style: { fontSize: 12, marginBottom: 4, opacity: 0.75 } }, t.line),
-      React.createElement('div', { style: { display: 'flex', gap: 16, marginBottom: 16 } },
+    // Server line: the headline control — it switches the thinking wire for
+    // every request the plugin route serves.
+    React.createElement('section', { className: 'qol-group' },
+      React.createElement('h3', { className: 'qol-groupHead' }, t.line),
+      React.createElement('div', { className: 'qol-radioRow' },
         ['llamacpp', 'ninfer'].map((dialect) =>
-          React.createElement('label', { key: dialect, style: { display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, cursor: 'pointer' } },
+          React.createElement('label', { key: dialect, className: 'qol-radio' },
             React.createElement('input', {
               type: 'radio',
               name: 'qwen38-dialect',
               checked: draft.dialect === dialect,
-              onChange: () => switchDialect(dialect),
+              onChange: () => { switchDialect(dialect) },
             }),
             dialect === 'ninfer' ? t.dialectNinfer : t.dialectLlamacpp,
           ),
         ),
       ),
     ),
-    React.createElement('div', null,
-      React.createElement('div', { style: { fontSize: 12, marginBottom: 4, opacity: 0.75 } }, t.connection),
+    React.createElement('section', { className: 'qol-group' },
+      React.createElement('h3', { className: 'qol-groupHead' }, t.connection),
       React.createElement(Field, { label: t.baseURL },
-        React.createElement('input', { style: INPUT_STYLE, value: draft.baseURL, onChange: (e) => setDraft({ baseURL: e.target.value }) })),
+        React.createElement(Input, { value: draft.baseURL, onChange: (e) => { setDraft({ baseURL: e.target.value }) } })),
       React.createElement(Field, { label: t.model },
-        React.createElement('input', { style: INPUT_STYLE, value: draft.model, onChange: (e) => setDraft({ model: e.target.value }) })),
+        React.createElement(Input, { value: draft.model, onChange: (e) => { setDraft({ model: e.target.value }) } })),
       React.createElement(Field, { label: t.displayName },
-        React.createElement('input', { style: INPUT_STYLE, value: draft.displayName, onChange: (e) => setDraft({ displayName: e.target.value }) })),
+        React.createElement(Input, { value: draft.displayName, onChange: (e) => { setDraft({ displayName: e.target.value }) } })),
     ),
-    React.createElement('div', null,
-      React.createElement('div', { style: { fontSize: 12, marginBottom: 4, opacity: 0.75 } }, t.window),
-      React.createElement(Field, { label: t.contextWindow },
-        React.createElement('input', { style: INPUT_STYLE, value: draft.contextWindow, onChange: (e) => setDraft({ contextWindow: e.target.value }) })),
-      React.createElement(Field, { label: t.maxTokens },
-        React.createElement('input', { style: INPUT_STYLE, value: draft.maxTokens, onChange: (e) => setDraft({ maxTokens: e.target.value }) })),
+    React.createElement('section', { className: 'qol-group' },
+      React.createElement('h3', { className: 'qol-groupHead' }, t.window),
+      React.createElement('div', { className: 'qol-row2' },
+        React.createElement(Field, { label: t.contextWindow },
+          React.createElement(Input, { value: draft.contextWindow, onChange: (e) => { setDraft({ contextWindow: e.target.value }) } })),
+        React.createElement(Field, { label: t.maxTokens },
+          React.createElement(Input, { value: draft.maxTokens, onChange: (e) => { setDraft({ maxTokens: e.target.value }) } })),
+      ),
     ),
-    React.createElement('div', null,
-      React.createElement('div', { style: { fontSize: 12, marginBottom: 4, opacity: 0.75 } }, t.thinking),
-      draft.dialect === 'ninfer'
+    React.createElement('section', { className: 'qol-group' },
+      React.createElement('h3', { className: 'qol-groupHead' }, t.thinking),
+      ninfer
         ? React.createElement(Field, { label: t.thinkingAll },
-          React.createElement('input', { style: INPUT_STYLE, value: draft.defaultBudget, onChange: (e) => setDraft({ defaultBudget: e.target.value }) }))
+          React.createElement(Input, { value: draft.defaultBudget, onChange: (e) => { setDraft({ defaultBudget: e.target.value }) } }))
         : null,
-      React.createElement('div', { style: { display: 'flex', gap: 8, marginBottom: 8, opacity: draft.dialect === 'ninfer' ? 0.45 : 1 } },
+      React.createElement('div', { className: ninfer ? 'qol-row3 qol-muted' : 'qol-row3' },
         ['low', 'medium', 'xhigh'].map((effort) =>
-          React.createElement('div', { key: effort, style: { flex: 1 } },
-            React.createElement('label', { style: { display: 'block', fontSize: 11, marginBottom: 2, opacity: 0.7 } }, effort),
-            React.createElement('input', { style: INPUT_STYLE, disabled: draft.dialect === 'ninfer', value: draft[effort], onChange: (e) => setDraft({ [effort]: e.target.value }) }),
-          ),
+          React.createElement(Field, { key: effort, label: effort },
+            React.createElement(Input, { disabled: ninfer, value: draft[effort], onChange: (e) => { setDraft({ [effort]: e.target.value }) } })),
         ),
       ),
-      React.createElement('div', { style: { fontSize: 11, opacity: 0.6, marginTop: 4, marginBottom: 12, lineHeight: 1.4 } }, draft.dialect === 'ninfer' ? t.thinkingHintNinfer : t.thinkingHintLlamacpp),
+      React.createElement('p', { className: 'qol-hint' }, ninfer ? t.thinkingHintNinfer : t.thinkingHintLlamacpp),
     ),
     // Compaction: the wiring status first (the trim controls only apply to
     // sessions using the qwen38-qol preset), then the trim knobs.
-    React.createElement('div', null,
-      React.createElement('div', { style: { fontSize: 12, marginBottom: 4, opacity: 0.75 } }, t.compaction),
-      React.createElement('div', { style: { fontSize: 11, opacity: 0.75, lineHeight: 1.4, marginBottom: 4, display: 'flex', alignItems: 'flex-start', gap: 6 } },
-        React.createElement('span', { 'aria-hidden': true, style: { width: 8, height: 8, borderRadius: '50%', background: compactionStatusColor(compaction), flex: 'none', marginTop: 3 } }),
+    React.createElement('section', { className: 'qol-group' },
+      React.createElement('h3', { className: 'qol-groupHead' }, t.compaction),
+      React.createElement('div', { className: 'qol-statusRow' },
+        React.createElement(StateDot, { state: compactionStatusState(compaction), className: 'qol-statusDot' }),
         compactionStatusCopy(compaction, t),
       ),
-      React.createElement('div', { style: { fontSize: 11, opacity: 0.55, lineHeight: 1.4, marginBottom: 12 } }, t.compactionHint),
-      React.createElement(Field, { label: t.summarizeImages },
-        React.createElement(ThemeSelect, {
-          value: draft.images,
-          options: [{ value: 'strip', label: t.strip }, { value: 'keep', label: t.keep }],
-          onChange: (images) => setDraft({ images }),
-        })),
-      React.createElement('div', { style: { display: 'flex', gap: 8 } },
-        React.createElement('div', { style: { flex: 1 } },
-          React.createElement(Field, { label: t.keepTurns },
-            React.createElement('input', { style: INPUT_STYLE, value: draft.keepTurns, onChange: (e) => setDraft({ keepTurns: e.target.value }) }))),
-        React.createElement('div', { style: { flex: 1 } },
-          React.createElement(Field, { label: t.toolChars },
-            React.createElement('input', { style: INPUT_STYLE, value: draft.toolChars, onChange: (e) => setDraft({ toolChars: e.target.value }) }))),
+      React.createElement('p', { className: 'qol-hint' }, t.compactionHint),
+      React.createElement('div', { className: 'qol-field' },
+        React.createElement('div', { className: 'qol-switchHead' },
+          React.createElement('span', { className: 'qol-fieldLabel' }, t.summarizeImages),
+          React.createElement(Switch, {
+            checked: draft.images === 'keep',
+            onChange: (next) => { setDraft({ images: next ? 'keep' : 'strip' }) },
+            label: t.summarizeImages,
+          }),
+        ),
+        React.createElement('p', { className: 'qol-hint' }, t.summarizeHint),
+      ),
+      React.createElement('div', { className: 'qol-row2' },
+        React.createElement(Field, { label: t.keepTurns },
+          React.createElement(Input, { value: draft.keepTurns, onChange: (e) => { setDraft({ keepTurns: e.target.value }) } })),
+        React.createElement(Field, { label: t.toolChars },
+          React.createElement(Input, { value: draft.toolChars, onChange: (e) => { setDraft({ toolChars: e.target.value }) } })),
       ),
     ),
-    React.createElement('div', { style: { display: 'flex', gap: 12, alignItems: 'center', marginTop: 8 } },
-      React.createElement('button', { style: BUTTON_STYLE, disabled: state.busy, onClick: doSave }, state.busy ? t.saving : t.save),
-      state.saved ? React.createElement('span', { style: { fontSize: 12, opacity: 0.7 } }, t.saved) : null,
+    React.createElement('div', { className: 'qol-footer' },
+      React.createElement(Button, { variant: 'primary', disabled: state.busy, onClick: () => { void doSave() } }, state.busy ? t.saving : t.save),
+      state.saved ? React.createElement('span', { className: 'qol-saved' }, t.saved) : null,
       state.busy === false && view !== null
-        ? React.createElement('span', { style: { fontSize: 11, opacity: 0.5 } }, `r${view.revision}`)
+        ? React.createElement('span', { className: 'qol-rev' }, `r${view.revision}`)
         : null,
     ),
   )

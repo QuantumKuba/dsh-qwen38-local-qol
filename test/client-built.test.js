@@ -11,6 +11,18 @@ import { createRequire } from 'node:module'
 import { Script } from 'node:vm'
 import * as React from 'react'
 
+/** The module-table require: `react` and the shared primitives package. */
+const externalRequire = (specifier) => {
+  if (specifier === 'react') return React
+  if (specifier === '@deepseek-ai/dsh-client-ui-primitives') return {
+    Button: () => null,
+    Input: () => null,
+    StateDot: () => null,
+    Switch: () => null,
+  }
+  throw new Error(`unexpected external ${specifier}`)
+}
+
 /** Execute the built bundle exactly the way the browser loader does. */
 function runBundle() {
   const bundle = readFileSync('lib/client.js', 'utf8')
@@ -27,10 +39,7 @@ test('built bundle: self-registers the package id and returns the plugin face', 
   const registrations = runBundle()
   assert.equal(registrations.length, 1)
   assert.equal(registrations[0].id, 'dsh-qwen38-local-qol')
-  const face = registrations[0].factory((specifier) => {
-    assert.equal(specifier, 'react')
-    return React
-  })
+  const face = registrations[0].factory(externalRequire)
   assert.equal(face.name, 'qwen38-local-qol')
   // The bundle executes in a vm realm: rebuild `inject` in this realm so the
   // prototype-sensitive deepStrictEqual compares equal across realms.
@@ -40,7 +49,7 @@ test('built bundle: self-registers the package id and returns the plugin face', 
 
 test('built bundle: apply registers the settings section with a working load face', async () => {
   const registrations = runBundle()
-  const face = registrations[0].factory(() => React)
+  const face = registrations[0].factory(externalRequire)
   let options = null
   let component = null
   const ctx = {

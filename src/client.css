@@ -1,0 +1,137 @@
+/*
+ * Qwen3.8 Local settings tab — the official look.
+ *
+ * Same recipe as the host's own settings sections: the shared
+ * ui-primitives controls (Button/Input/Switch/StateDot, imported in
+ * client.js) plus the --dsw-alias-* design tokens; no literal colors, no
+ * theme branches. Layout mirrors the harness sections: 720px column, 18px
+ * title, 12px uppercase tertiary group heads, 0.5px hairline fields.
+ *
+ * Classes are `qol-` prefixed (not CSS Modules) so the sheet can ship as a
+ * plain text import injected once as a <style> tag — see client.js.
+ */
+
+.qol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 720px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.qol-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.qol-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.qol-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qol-groupHead {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.qol-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qol-fieldLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.qol-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.qol-radioRow {
+  display: flex;
+  gap: 16px;
+}
+
+.qol-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.qol-radio input {
+  accent-color: var(--dsw-alias-brand-primary);
+}
+
+.qol-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.qol-row3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+/* The inactive line's effort caps stay visible but read as parked. */
+.qol-muted {
+  opacity: 0.45;
+}
+
+.qol-statusRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.qol-statusDot {
+  flex: none;
+  margin-top: 4px;
+}
+
+.qol-switchHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.qol-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.qol-saved {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.qol-rev {
+  font-size: 11px;
+  color: var(--dsw-alias-label-dimmed);
+}

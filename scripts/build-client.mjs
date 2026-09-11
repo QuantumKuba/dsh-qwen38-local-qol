@@ -1,9 +1,13 @@
 /**
  * Build the browser half into the DSH client-module format: a self-registering
  * classic script whose `factory(require)` returns the module namespace, with
- * `react` left external (the module table supplies the identity). The loader
- * executes the file as a plain script and collects the registration — top-level
- * `import`/`export` statements would be a syntax error there.
+ * `react` and the shared ui-primitives package left external (the module
+ * table supplies both identities — the same `PLATFORM_MODULES` table the
+ * host's own settings sections resolve from). The page's CSS sheet ships as a
+ * text import (`loader: { '.css': 'text' }`) and is injected by the bundle
+ * itself. The loader executes the file as a plain script and collects the
+ * registration — top-level `import`/`export` statements would be a syntax
+ * error there.
  *
  * Usage: `node scripts/build-client.mjs` (esbuild is a devDependency).
  */
@@ -14,12 +18,13 @@ import { Script } from 'node:vm'
 const PACKAGE_ID = 'dsh-qwen38-local-qol'
 
 const result = await build({
-  entryPoints: ['src/client.js'],
+  entryPoints: ['src/client-entry.js'],
   bundle: true,
   format: 'cjs',
   platform: 'browser',
   target: 'es2022',
-  external: ['react'],
+  external: ['react', '@deepseek-ai/dsh-client-ui-primitives'],
+  loader: { '.css': 'text' },
   write: false,
   logLevel: 'silent',
 })
@@ -51,21 +56,26 @@ const reactStub = {
   useState: (initial) => [initial, () => {}],
   useEffect: () => {},
 }
+const primitivesStub = {
+  Button: () => null,
+  Input: () => null,
+  StateDot: () => null,
+  Switch: () => null,
+}
+const externalRequire = (specifier) => {
+  if (specifier === 'react') return reactStub
+  if (specifier === '@deepseek-ai/dsh-client-ui-primitives') return primitivesStub
+  throw new Error(`unexpected external ${specifier}`)
+}
 // Classic-script execution in a fresh global context (node:vm) — the same
 // shape the browser loader gives the file, without the Function constructor.
 new Script(bundle).runInNewContext({
   window: fakeWindow,
-  require: (specifier) => {
-    if (specifier === 'react') return reactStub
-    throw new Error(`unexpected external ${specifier}`)
-  },
+  require: externalRequire,
 })
 const registration = globalThis.__registration
 if (registration.id !== PACKAGE_ID) throw new Error('registration id mismatch')
-const face = registration.factory((specifier) => {
-  if (specifier === 'react') return reactStub
-  throw new Error(`unexpected external ${specifier}`)
-})
+const face = registration.factory(externalRequire)
 for (const member of ['name', 'inject', 'apply']) {
   if (face[member] === undefined) throw new Error(`built bundle is missing export ${member}`)
 }

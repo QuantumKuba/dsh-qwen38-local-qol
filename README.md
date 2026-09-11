@@ -280,15 +280,21 @@ Both dialects speak OpenAI-compatible `/v1/chat/completions` with:
 ```sh
 pnpm install
 pnpm test              # node --test (host + client + built artifact)
-pnpm run build:client  # re-build lib/client.js after editing src/client.js
+pnpm run build:client  # re-build lib/client.js after editing the src/client* sources
 ```
 
 Raw ESM JavaScript with JSDoc for the host half (the dsh-llamacpp shipping
-pattern). The browser half (`src/client.js`) is `React.createElement` source,
-built by `scripts/build-client.mjs` (esbuild, `react` external) into the DSH
-client-module format — a self-registering script the web loader executes as a
-classic script — and shipped as the committed `lib/client.js`. Rebuild and
-commit after any `src/client.js` change. Peer pins: `@deepseek-ai/cordis
+pattern). The browser half (`src/client.js`, plus `src/client-entry.js`
+which pulls in the `client.css` page sheet) is `React.createElement` source,
+styled the way the host's own settings sections are: the shared
+`@deepseek-ai/dsh-client-ui-primitives` controls (Button, Input, Switch,
+StateDot) and the `--dsw-alias-*` design tokens. It is built by
+`scripts/build-client.mjs` (esbuild entry `src/client-entry.js`, with
+`react` and the primitives package external — the host's module table
+supplies both identities) into the DSH client-module format — a
+self-registering script the web loader executes as a classic script — and
+shipped as the committed `lib/client.js`. Rebuild and commit after any
+browser-half change. Peer pins: `@deepseek-ai/cordis
 ^4.0.1`, `@deepseek-ai/dsh-llm ^0.1.1-rc.2` (verified against the npm
 0.1.1-rc.2 line; developed and machine-verified on the 0.1.2-alpha.3 source
 tree; re-verified live on 0.1.5-alpha.1 after the session-log V3 upgrade
@@ -559,14 +565,19 @@ tab 实况（两条线）：
 ```sh
 pnpm install
 pnpm test              # node --test（host + client + 构建产物）
-pnpm run build:client  # 改完 src/client.js 后重建 lib/client.js
+pnpm run build:client  # 改完 src/client* 源码后重建 lib/client.js
 ```
 
 宿主半边是带 JSDoc 的裸 ESM JavaScript（dsh-llamacpp 的出货模式）。
-浏览器半边（`src/client.js`）是 `React.createElement` 源码，由
-`scripts/build-client.mjs`（esbuild，`react` external）构建为 DSH client
-模块格式——web loader 作为经典脚本执行的自注册脚本——以已提交的
-`lib/client.js` 出货。`src/client.js` 任何改动后重建并提交。Peer 钉版：
+浏览器半边（`src/client.js`，外加引入 `client.css` 页面样式的
+`src/client-entry.js`）是 `React.createElement` 源码，样式走宿主自带
+settings section 的同一套做法：共享
+`@deepseek-ai/dsh-client-ui-primitives` 控件（Button、Input、Switch、
+StateDot）+ `--dsw-alias-*` 设计令牌。由 `scripts/build-client.mjs`
+（esbuild，入口 `src/client-entry.js`，`react` 与 primitives 包
+external——宿主 module table 提供这两个身份）构建为 DSH client 模块
+格式——web loader 作为经典脚本执行的自注册脚本——以已提交的 `lib/client.js`
+出货。浏览器半边任何改动后重建并提交。Peer 钉版：
 `@deepseek-ai/cordis ^4.0.1`、`@deepseek-ai/dsh-llm ^0.1.1-rc.2`（对 npm
 0.1.1-rc.2 线验证；在 0.1.2-alpha.3 源码树上开发与机器验证；2026-09-09
 session-log V3 升级后在 0.1.5-alpha.1 上实跑复验），设置

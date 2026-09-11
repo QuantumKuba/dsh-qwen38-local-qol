@@ -65,7 +65,7 @@ test('client contract: named exports for the function-plugin loader', () => {
   assert.deepEqual(client.inject, ['slots', 'locale', 'remote', 'remote.settings'])
   assert.equal(typeof client.apply, 'function')
   assert.equal(typeof client.compactionStatusCopy, 'function')
-  assert.equal(typeof client.compactionStatusColor, 'function')
+  assert.equal(typeof client.compactionStatusState, 'function')
 })
 
 test('compactionStatusCopy: the three wiring states', () => {
@@ -80,11 +80,11 @@ test('compactionStatusCopy: the three wiring states', () => {
   assert.equal(client.compactionStatusCopy({ presetGenerated: true, defaultPreset: 'standard' }, t), 'available: standard')
 })
 
-test('compactionStatusColor: green active, amber available, grey not set up', () => {
-  assert.equal(client.compactionStatusColor(undefined), 'rgba(128, 128, 128, 0.55)')
-  assert.equal(client.compactionStatusColor({ presetGenerated: false, defaultPreset: 'standard' }), 'rgba(128, 128, 128, 0.55)')
-  assert.equal(client.compactionStatusColor({ presetGenerated: true, defaultPreset: 'qwen38-qol' }), '#4ade80')
-  assert.equal(client.compactionStatusColor({ presetGenerated: true, defaultPreset: 'standard' }), '#fbbf24')
+test('compactionStatusState: done active, warning available, idle not set up', () => {
+  assert.equal(client.compactionStatusState(undefined), 'idle')
+  assert.equal(client.compactionStatusState({ presetGenerated: false, defaultPreset: 'standard' }), 'idle')
+  assert.equal(client.compactionStatusState({ presetGenerated: true, defaultPreset: 'qwen38-qol' }), 'done')
+  assert.equal(client.compactionStatusState({ presetGenerated: true, defaultPreset: 'standard' }), 'warning')
 })
 
 test('client: the load face reports the agent-presets default for the status actions', async () => {
