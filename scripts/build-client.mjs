@@ -9,6 +9,7 @@
  */
 import { build } from 'esbuild'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { Script } from 'node:vm'
 
 const PACKAGE_ID = 'dsh-qwen38-local-qol'
 
@@ -50,10 +51,14 @@ const reactStub = {
   useState: (initial) => [initial, () => {}],
   useEffect: () => {},
 }
-const fn = new Function('window', 'require', bundle)
-fn(fakeWindow, (specifier) => {
-  if (specifier === 'react') return reactStub
-  throw new Error(`unexpected external ${specifier}`)
+// Classic-script execution in a fresh global context (node:vm) — the same
+// shape the browser loader gives the file, without the Function constructor.
+new Script(bundle).runInNewContext({
+  window: fakeWindow,
+  require: (specifier) => {
+    if (specifier === 'react') return reactStub
+    throw new Error(`unexpected external ${specifier}`)
+  },
 })
 const registration = globalThis.__registration
 if (registration.id !== PACKAGE_ID) throw new Error('registration id mismatch')

@@ -8,6 +8,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { Script } from 'node:vm'
 import * as React from 'react'
 
 /** Execute the built bundle exactly the way the browser loader does. */
@@ -15,8 +16,10 @@ function runBundle() {
   const bundle = readFileSync('lib/client.js', 'utf8')
   const registrations = []
   const window = { __ModuleLoader__: { load: (registration) => { registrations.push(registration) } } }
-  // Classic-script execution: the bundle body may use no top-level import/await.
-  new Function('window', bundle)(window)
+  // Classic-script execution in a fresh global context (node:vm) — the same
+  // shape the browser loader gives the file: a plain script, no top-level
+  // import/await, no Function constructor.
+  new Script(bundle).runInNewContext({ window })
   return registrations
 }
 
@@ -29,7 +32,9 @@ test('built bundle: self-registers the package id and returns the plugin face', 
     return React
   })
   assert.equal(face.name, 'qwen38-local-qol')
-  assert.deepEqual(face.inject, ['slots', 'locale', 'remote', 'remote.settings', 'qwen38LocalQol'])
+  // The bundle executes in a vm realm: rebuild `inject` in this realm so the
+  // prototype-sensitive deepStrictEqual compares equal across realms.
+  assert.deepEqual([...face.inject], ['slots', 'locale', 'remote', 'remote.settings', 'qwen38LocalQol'])
   assert.equal(typeof face.apply, 'function')
 })
 
