@@ -103,9 +103,11 @@
   gap: 12px;
 }
 
+/* The effort-cap row stays short on purpose: three capped fields read as
+   separate inputs instead of one bar spanning the content column. */
 .qol-row3 {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 156px));
   gap: 12px;
 }
 
