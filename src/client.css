@@ -102,24 +102,19 @@
   accent-color: var(--dsw-alias-brand-primary);
 }
 
-/* Two-field rows: the fields are long enough to span the content edge with
-   space-between, and the middle gap lands on the reasoning row's 42px
-   (267px fields at the 576px width). */
+/* Multi-field rows: fluid 1fr fields with a fixed 42px column gap, so the
+   gaps stay equal across rows at any content width; the fields take the
+   remaining width (≈267px / ≈164px at the current column). */
 .qol-row2 {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 267px));
-  gap: 12px;
-  justify-content: space-between;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 42px;
 }
 
-/* The effort-cap row: capped fields read as three separate inputs (42px
-   gaps at the 576px content width), and the row still ends at the content
-   edge. */
 .qol-row3 {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 164px));
-  gap: 12px;
-  justify-content: space-between;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 42px;
 }
 
 /* The inactive line's effort caps stay visible but read as parked. */
