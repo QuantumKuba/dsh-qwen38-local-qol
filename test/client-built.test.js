@@ -34,7 +34,7 @@ test('built bundle: self-registers the package id and returns the plugin face', 
   assert.equal(face.name, 'qwen38-local-qol')
   // The bundle executes in a vm realm: rebuild `inject` in this realm so the
   // prototype-sensitive deepStrictEqual compares equal across realms.
-  assert.deepEqual([...face.inject], ['slots', 'locale', 'remote', 'remote.settings', 'qwen38LocalQol'])
+  assert.deepEqual([...face.inject], ['slots', 'locale', 'remote', 'remote.settings'])
   assert.equal(typeof face.apply, 'function')
 })
 

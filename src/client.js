@@ -60,11 +60,6 @@ const COPY = {
     compactionActive: 'Local compaction is active for new sessions (default preset: qwen38-qol).',
     compactionAvailable: 'Local compaction is available, but the default preset is "{default}" — new sessions use standard compaction. Select qwen38-qol on the Agent presets page to enable it.',
     compactionHint: 'The trim controls apply to sessions using the qwen38-qol preset; compaction thinking-off and the output cap apply to every qwen38 session on the wire.',
-    generate: 'Generate the preset',
-    generating: 'Generating…',
-    setDefault: 'Set as the default preset',
-    settingDefault: 'Setting…',
-    setupError: 'Preset generation failed: ',
   },
   zh: {
     title: 'Qwen3.8 本地',
@@ -100,11 +95,6 @@ const COPY = {
     compactionActive: '本地压缩对新会话生效（默认预设：qwen38-qol）。',
     compactionAvailable: '本地压缩可用，但默认预设是 "{default}"——新会话走标准压缩。在 Agent 预设页选择 qwen38-qol 启用。',
     compactionHint: '裁剪设置仅对使用 qwen38-qol 预设的会话生效；压缩 thinking off 与输出帽在 wire 层对所有 qwen38 会话常开。',
-    generate: '生成预设',
-    generating: '生成中…',
-    setDefault: '设为默认预设',
-    settingDefault: '设置中…',
-    setupError: '生成预设失败：',
   },
 }
 
@@ -154,18 +144,6 @@ const INPUT_STYLE = {
   borderRadius: 6,
   background: 'transparent',
   color: 'inherit',
-}
-
-/** The compact action button beside the compaction status line. */
-const ACTION_STYLE = {
-  fontSize: 12,
-  padding: '4px 12px',
-  borderRadius: 6,
-  border: '1px solid rgba(128, 128, 128, 0.3)',
-  background: 'transparent',
-  color: 'inherit',
-  cursor: 'pointer',
-  marginBottom: 8,
 }
 
 /**
@@ -360,10 +338,10 @@ export function toDraft(value) {
 }
 
 /** The section entry: locale follows the host observable; data rides the inject face. */
-function QwenLocalSectionEntry({ useLocale, load, save, setup, setDefault }) {
+function QwenLocalSectionEntry({ useLocale, load, save }) {
   const locale = useLocale((snapshot) => (snapshot.active === 'zh' ? 'zh' : 'en'))
   const t = COPY[locale]
-  const [state, setState] = React.useState({ status: 'loading', error: null, view: null, draft: null, busy: false, saved: false, agentPresets: null, actionBusy: null, actionError: null, compactionOverride: null })
+  const [state, setState] = React.useState({ status: 'loading', error: null, view: null, draft: null, busy: false, saved: false, agentPresets: null })
 
   const setDraft = (patch) => setState((s) => ({ ...s, draft: s.draft === null ? s.draft : { ...s.draft, ...patch }, saved: false }))
 
@@ -413,7 +391,7 @@ function QwenLocalSectionEntry({ useLocale, load, save, setup, setDefault }) {
     let alive = true
     load().then((result) => {
       if (!alive) return
-      if (result.ok) setState({ status: 'ready', error: null, view: result.value, draft: toDraft(result.value.value), busy: false, saved: false, agentPresets: result.agentPresets ?? null, actionBusy: null, actionError: null, compactionOverride: null })
+      if (result.ok) setState({ status: 'ready', error: null, view: result.value, draft: toDraft(result.value.value), busy: false, saved: false, agentPresets: result.agentPresets ?? null })
       else setState({ status: 'error', error: result.ok === false && result.error === 'ns-missing' ? t.notFound : result.error, view: null, draft: null, busy: false, saved: false })
     }).catch((error) => {
       if (!alive) return
@@ -488,42 +466,10 @@ function QwenLocalSectionEntry({ useLocale, load, save, setup, setDefault }) {
       setState((s) => ({ ...s, busy: false, saved: true, view: result.value, draft: toDraft(result.value.value) }))
     } else if (result.code === 'settings/conflict') {
       const fresh = await load()
-      if (fresh.ok) setState({ status: 'ready', error: t.conflict, view: fresh.value, draft: toDraft(fresh.value.value), busy: false, saved: false, agentPresets: fresh.agentPresets ?? null, actionBusy: null, actionError: null, compactionOverride: null })
+      if (fresh.ok) setState({ status: 'ready', error: t.conflict, view: fresh.value, draft: toDraft(fresh.value.value), busy: false, saved: false, agentPresets: fresh.agentPresets ?? null })
       else setState((s) => ({ ...s, busy: false, error: t.remoteError + fresh.error }))
     } else {
       setState((s) => ({ ...s, busy: false, error: t.remoteError + result.error }))
-    }
-  }
-
-  // The compaction wiring actions: generate the preset (the host-side file
-  // write through the provided service) or set it as the default (the same
-  // settings write the Agent presets page performs). Success flips the status
-  // line locally — the on-disk fact changes immediately, the startup snapshot
-  // does not.
-  const doGenerate = async () => {
-    setState((s) => ({ ...s, actionBusy: 'generate', actionError: null, error: null }))
-    const result = await setup()
-    if (result.ok === true) {
-      setState((s) => ({ ...s, actionBusy: null, compactionOverride: { presetGenerated: true, defaultPreset: s.agentPresets?.defaultPreset ?? s.view.value.compaction?.defaultPreset ?? 'standard' } }))
-    } else {
-      setState((s) => ({ ...s, actionBusy: null, actionError: t.setupError + result.error }))
-    }
-  }
-  const doSetDefault = async () => {
-    if (state.agentPresets === null || state.agentPresets.defaultPreset === null) {
-      setState((s) => ({ ...s, actionError: t.remoteError + 'agent-presets' }))
-      return
-    }
-    setState((s) => ({ ...s, actionBusy: 'setDefault', actionError: null, error: null }))
-    const result = await setDefault(state.agentPresets.revision)
-    if (result.ok === true) {
-      setState((s) => ({ ...s, actionBusy: null, agentPresets: { revision: result.value.revision, defaultPreset: PRESET_ID }, compactionOverride: { presetGenerated: true, defaultPreset: PRESET_ID } }))
-    } else if (result.code === 'settings/conflict') {
-      const fresh = await load()
-      if (fresh.ok) setState({ status: 'ready', error: t.conflict, view: fresh.value, draft: toDraft(fresh.value.value), busy: false, saved: false, agentPresets: fresh.agentPresets ?? null, actionBusy: null, actionError: null, compactionOverride: null })
-      else setState((s) => ({ ...s, actionBusy: null, error: t.remoteError + fresh.error }))
-    } else {
-      setState((s) => ({ ...s, actionBusy: null, actionError: t.remoteError + result.error }))
     }
   }
 
@@ -535,12 +481,11 @@ function QwenLocalSectionEntry({ useLocale, load, save, setup, setDefault }) {
   }
   const { view, draft } = state
   // The status line: the startup snapshot (the section base) with the live
-  // agent-presets default from the same describe response, and the local
-  // override after an in-tab action succeeds.
-  const compactionBase = view.value.compaction ?? { presetGenerated: false, defaultPreset: 'standard' }
+  // agent-presets default from the same describe response — a default change
+  // shows up without a restart.
   const compaction = {
-    presetGenerated: state.compactionOverride?.presetGenerated ?? compactionBase.presetGenerated,
-    defaultPreset: state.compactionOverride?.defaultPreset ?? state.agentPresets?.defaultPreset ?? compactionBase.defaultPreset,
+    presetGenerated: (view.value.compaction ?? { presetGenerated: false }).presetGenerated,
+    defaultPreset: state.agentPresets?.defaultPreset ?? view.value.compaction?.defaultPreset ?? 'standard',
   }
   return React.createElement('div', { style: ROOT_STYLE },
     React.createElement('h2', { style: { marginTop: 0 } }, t.title),
@@ -603,25 +548,6 @@ function QwenLocalSectionEntry({ useLocale, load, save, setup, setDefault }) {
         React.createElement('span', { 'aria-hidden': true, style: { width: 8, height: 8, borderRadius: '50%', background: compactionStatusColor(compaction), flex: 'none', marginTop: 3 } }),
         compactionStatusCopy(compaction, t),
       ),
-      compaction.presetGenerated !== true
-        ? React.createElement('button', {
-          type: 'button',
-          disabled: state.actionBusy !== null,
-          onClick: doGenerate,
-          style: ACTION_STYLE,
-        }, state.actionBusy === 'generate' ? t.generating : t.generate)
-        : null,
-      compaction.presetGenerated === true && compaction.defaultPreset !== PRESET_ID
-        ? React.createElement('button', {
-          type: 'button',
-          disabled: state.actionBusy !== null,
-          onClick: doSetDefault,
-          style: ACTION_STYLE,
-        }, state.actionBusy === 'setDefault' ? t.settingDefault : t.setDefault)
-        : null,
-      state.actionError !== null
-        ? React.createElement('div', { style: { fontSize: 11, opacity: 0.8, lineHeight: 1.4, marginBottom: 8, color: '#f87171' } }, state.actionError)
-        : null,
       React.createElement('div', { style: { fontSize: 11, opacity: 0.55, lineHeight: 1.4, marginBottom: 12 } }, t.compactionHint),
       React.createElement(Field, { label: t.summarizeImages },
         React.createElement(ThemeSelect, {
@@ -674,16 +600,6 @@ export function apply(ctx) {
             agentPresets: presets === undefined ? null : { revision: presets.revision, defaultPreset: presets.value?.default ?? null },
           }
         },
-        setup: async () => {
-          const service = ctx.qwen38LocalQol
-          if (service === undefined) return { ok: false, error: 'the host plugin did not provide the setup service; restart DSH' }
-          return service.setup()
-        },
-        setDefault: async (revision) => {
-          const response = await ctx.remote.settings.update('agent-presets', { default: PRESET_ID }, revision)
-          if (response.ok !== true) return { ok: false, code: response.error.code, error: response.error.message }
-          return { ok: true, value: response.value }
-        },
         save: async (view, patch) => {
           const response = await ctx.remote.settings.update(NS, patch, view.revision)
           if (response.ok !== true) return { ok: false, code: response.error.code, error: response.error.message }
@@ -699,4 +615,4 @@ export function apply(ctx) {
 export const name = 'qwen38-local-qol'
 
 /** Hard client dependencies. `remote` and the dotted `remote.settings` are Cordis client services — the gateway provides each Remote namespace under its dotted name, and the ctx proxy resolves `ctx.remote.settings` against that one; an undeclared service is absent from the plugin's ctx. */
-export const inject = ['slots', 'locale', 'remote', 'remote.settings', 'qwen38LocalQol']
+export const inject = ['slots', 'locale', 'remote', 'remote.settings']

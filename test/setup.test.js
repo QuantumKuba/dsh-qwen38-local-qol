@@ -4,7 +4,7 @@
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import {
@@ -13,6 +13,7 @@ import {
   BACKEND_PACKAGE,
   BACKEND_MAX_TOKENS,
   applyDefaultPreset,
+  autoApplyCompaction,
   renderPresetMetadata,
   readDefaultAgentPreset,
   readCompactionStatus,
@@ -210,5 +211,33 @@ test('readCompactionStatus: reports the preset existence and the default preset'
     assert.deepEqual(readCompactionStatus(dir), { presetGenerated: true, defaultPreset: 'qwen38-qol' })
   } finally {
     rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('autoApplyCompaction: first run generates and sets the default; re-runs and an explicit default are no-ops', () => {
+  const home = mkdtempSync(join(tmpdir(), 'qol-auto-apply-'))
+  const source = join(home, 'standard.cordis.yml')
+  writeFileSync(source, PRESET)
+  const realSource = process.env.DSH_QWEN38_PRESET_SRC
+  process.env.DSH_QWEN38_PRESET_SRC = source
+  try {
+    const first = autoApplyCompaction(home)
+    assert.equal(first.applied, true)
+    assert.ok(existsSync(first.preset))
+    assert.ok(existsSync(first.metadata))
+    assert.equal(first.defaultChanged, 'created')
+    const second = autoApplyCompaction(home)
+    assert.equal(second.applied, false)
+    assert.equal(second.defaultChanged, 'none')
+    // An explicit other default is respected (never replaced at boot).
+    writeFileSync(join(home, 'settings.yaml'), 'agent-presets:\n  default: standard\n')
+    const third = autoApplyCompaction(home)
+    assert.equal(third.applied, false)
+    assert.equal(third.defaultChanged, 'none')
+    assert.equal(readFileSync(join(home, 'settings.yaml'), 'utf8'), 'agent-presets:\n  default: standard\n')
+  } finally {
+    if (realSource === undefined) delete process.env.DSH_QWEN38_PRESET_SRC
+    else process.env.DSH_QWEN38_PRESET_SRC = realSource
+    rmSync(home, { recursive: true, force: true })
   }
 })

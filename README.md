@@ -45,16 +45,26 @@ One package, three registrations:
 ```sh
 # same as any other plugin (add --profile <name> for a non-default profile):
 dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
-# plugin-specific one-time step — generate the compaction user preset (with
-# its picker description), AND set it as the default agent preset in
-# ~/.dsh/settings.yaml (a dated backup of each file it changes, on re-run):
-node_modules/dsh-qwen38-local-qol/src/setup.js --src <path to the installed @deepseek-ai/dsh-agent-presets presets/standard/agent.cordis.yml>
 ```
 
-New sessions then use **`qwen38-qol`** automatically. Existing sessions keep
-the preset they were created with — select **`qwen38-qol`** in the GUI to
-switch one, or remove the `agent-presets:` section from `~/.dsh/settings.yaml`
-to keep `standard` as the default.
+Restart DSH: the compaction wiring self-applies at boot — the generated
+`qwen38-qol` preset is created from the standard preset's composition, and
+the default agent preset is set only when none is configured yet (an
+explicit choice is respected on every later boot). New sessions then use
+**`qwen38-qol`** automatically. Existing sessions keep the preset they were
+created with — select **`qwen38-qol`** in the GUI to switch one, or remove
+the `agent-presets:` section from `~/.dsh/settings.yaml` to keep `standard`
+as the default (the boot step respects it).
+
+`setup.js` performs the same write manually (regenerates the preset from the
+live installed standard, forces the default, dated backups of every file it
+changes):
+
+```sh
+# without --src the standard preset resolves from the installed
+# @deepseek-ai/dsh-agent-presets package (or DSH_QWEN38_PRESET_SRC):
+node_modules/dsh-qwen38-local-qol/src/setup.js
+```
 
 `dsh --profile <name> --patch <plugin>/cordis.patch.yml --dump-config` shows
 the composed provider row without booting.
@@ -170,14 +180,17 @@ The tab, both lines:
   It matters because the trim knobs apply only to sessions that use the
   `qwen38-qol` preset (the preset layer), while the wire-layer rules
   (compaction thinking-off and the output cap) apply to every qwen38 session
-  regardless of the preset. The status is read at boot, so running the setup
-  or changing the default preset shows up on the next DSH start — except
-  that the tab offers both changes in place: a **Generate the preset** button
-  (the host reads the standard preset through the agent-presets service and
-  writes the transformed files; one-shot, it refuses to overwrite) and a
-  **Set as the default preset** button (the same settings write the Agent
-  presets page performs) — after either succeeds the status line flips
-  without a restart and new sessions pick the change up immediately.
+  regardless of the preset. The wiring self-applies at every DSH start: a
+  missing generated preset regenerates from the standard preset's
+  composition, and the default agent preset is set only when none is
+  configured yet (an explicit choice is respected on every later boot). The
+  dot reads at a glance — green: the preset exists and is the default
+  (compaction active for new sessions); amber: the preset exists but the
+  default is another preset (available — switch the default on the Agent
+  presets page); grey: the preset is missing (it regenerates on the next
+  start, or run the `setup.js` CLI for a manual re-run). The startup snapshot
+  covers the preset's existence; the default half is read live, so a change
+  on the Agent presets page flips the dot without a restart.
 - **Per-dialect line memory**: the section persists a `lines` block
   (`lines.ninfer` / `lines.llamacpp`) where each line remembers its own
   connection (`baseURL` / `model` / `displayName`), its own window numbers
@@ -301,11 +314,13 @@ the settings section.
   route works in both surfaces. Until the upstream opens a preset/settings
   seam for headless, headless users keep the compaction change on the core
   patch chain.
-- **Default preset.** `setup.js` writes
-  `agent-presets: { default: qwen38-qol }` into `settings.yaml` (a dated
-  backup of the file is kept), so new sessions use the generated preset
-  automatically; existing sessions select it per session in the GUI. To keep a
-  different default, remove or edit that section.
+- **Default preset.** The compaction wiring self-applies at every DSH start
+  (a missing generated preset regenerates from the standard preset; the
+  default is set only when none is configured yet — an explicit choice is
+  respected). `setup.js` performs the same write manually (a dated backup of
+  `settings.yaml` is kept). Existing sessions select the preset per session
+  in the GUI; to keep a different default, remove or edit the `agent-presets:`
+  section in `settings.yaml`.
 
 ---
 
@@ -348,14 +363,23 @@ the settings section.
 ```sh
 # 与其他插件相同（非默认 profile 加 --profile <name>）：
 dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
-# 本插件特有的一次性步骤——生成压缩用户 preset（含选择器描述），并把 agent
-# preset 默认设为 qwen38-qol（重跑对它改动的每个文件各留日期备份）：
-node_modules/dsh-qwen38-local-qol/src/setup.js --src <已安装的 @deepseek-ai/dsh-agent-presets 的 presets/standard/agent.cordis.yml 路径>
 ```
 
-新会话随后自动使用 **`qwen38-qol`**。已有会话保留创建时的 preset——在 GUI
-里选择 `qwen38-qol` 切换单个会话，或从 `~/.dsh/settings.yaml` 删掉
-`agent-presets:` 段保持 `standard` 为默认。
+重启 DSH：压缩接线在启动时自动生效——从 standard preset 的组成生成
+`qwen38-qol` 用户 preset，且仅当尚未配置默认 agent preset 时才设默认
+（显式选择之后每次启动都尊重）。新会话随后自动使用 **`qwen38-qol`**。
+已有会话保留创建时的 preset——在 GUI 里选择 `qwen38-qol` 切换单个会话，
+或从 `~/.dsh/settings.yaml` 删掉 `agent-presets:` 段保持 `standard` 为默认
+（启动步骤尊重它）。
+
+`setup.js` 手动执行同样的写入（从已安装的 live standard 重新生成 preset、
+强制设默认、对改动的每个文件留日期备份）：
+
+```sh
+# 不带 --src 时，standard preset 从已安装的 @deepseek-ai/dsh-agent-presets
+# 包解析（或 DSH_QWEN38_PRESET_SRC）：
+node_modules/dsh-qwen38-local-qol/src/setup.js
+```
 
 `dsh --profile <name> --patch <plugin>/cordis.patch.yml --dump-config`
 可在不启动的情况下查看组合后的 provider 行。
@@ -457,11 +481,14 @@ tab 实况（两条线）：
 - **压缩接线状态**：压缩段开头显示本地压缩后端在 DSH 启动时的状态：生成的
   `qwen38-qol` 预设是否存在、新会话默认用哪个 agent 预设。有意义是因为裁剪
   旋钮只对使用 `qwen38-qol` 预设的会话生效（preset 层），而 wire 层规则
-  （压缩 thinking off 与输出帽）对所有 qwen38 会话常开、与预设无关。状态在
-  启动时读取——跑 setup 或改默认预设后，下次 DSH 启动生效；不过 tab 里可以
-  直接完成这两个变更：**生成预设**按钮（宿主经 agent-presets 服务读 standard
-  预设并写入变换后的文件；一次性、拒覆盖）与**设为默认预设**按钮（与 Agent
-  预设页相同的设置写入）——任一成功即当场刷新状态行，新会话立即生效，无需重启。
+  （压缩 thinking off 与输出帽）对所有 qwen38 会话常开、与预设无关。接线
+  在每次 DSH 启动时自动生效：生成的 preset 缺失时从 standard preset 的
+  组成重新生成；仅当尚未配置默认 agent preset 时才设默认（显式选择之后
+  每次启动都尊重）。圆点一眼可读——绿：preset 存在且为默认（新会话压缩
+  生效）；琥珀：preset 存在但默认是别的 preset（可用——在 Agent 预设页
+  切换默认）；灰：preset 缺失（下次启动重新生成，或跑 setup.js CLI 手动
+  重跑）。启动快照覆盖 preset 存在性；默认半实时读取，在 Agent 预设页
+  改动后圆点无需重启即翻转。
 - **按方言的线记忆**：section 持久化 `lines` 块（`lines.ninfer` /
   `lines.llamacpp`），每条线记住自己的连接（`baseURL` / `model` /
   `displayName`）、窗口数字（`contextWindow` / `maxTokens` /
@@ -560,6 +587,8 @@ section 另有 `@deepseek-ai/schemastery ^3.18.1` 与 `react ^18.2.0`。
   行，其会话是裸 agent，生成的 preset 压缩后端在那里不生效；provider 路由
   两面都工作。上游为 headless 打开 preset/settings 接缝之前，headless
   用户的压缩改动保留在核心补丁链上。
-- **默认 preset。** `setup.js` 会把 `agent-presets: { default: qwen38-qol }`
-  写入 `settings.yaml`（该文件留日期备份），新会话自动使用生成的 preset；
-  已有会话在 GUI 里每会话选择。想保持别的默认，删掉或改这一节即可。
+- **默认 preset。** 压缩接线在每次 DSH 启动时自动生效（生成的 preset 缺失
+  时从 standard preset 重新生成；仅当尚未配置默认时才设默认——显式选择被
+  尊重）。`setup.js` 手动执行同样的写入（`settings.yaml` 留日期备份）。
+  已有会话在 GUI 里每会话选择；想保持别的默认，删掉或改 `settings.yaml`
+  的 `agent-presets:` 一节即可。

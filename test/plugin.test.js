@@ -3,7 +3,7 @@
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as plugin from '../src/index.js'
@@ -17,7 +17,6 @@ import { QwenLocalAdapter } from '../src/adapter.js'
  * provides (the session-query `_optionalPersistenceFiber` precedent).
  */
 function makeTestCtx(services = {}, llm = {}) {
-  const provided = {}
   return {
     inject(names, callback) {
       const face = {}
@@ -28,11 +27,7 @@ function makeTestCtx(services = {}, llm = {}) {
       callback(face)
       return {}
     },
-    // The strict store read (the optional-service path the setup action uses).
-    get: (name) => (Object.hasOwn(services, name) ? services[name] : provided[name]),
-    provide: (name, value) => { provided[name] = value },
     llm,
-    provided,
   }
 }
 
@@ -211,7 +206,7 @@ test('apply: injects the core "attachments" service (plural) so image blocks rea
   }
 })
 
-test('apply: provides the qwen38LocalQol setup service the settings tab calls', async () => {
+test('apply: auto-applies the compaction preset at boot, before the status snapshot', () => {
   const standardText = [
     '- id: agent',
     '  name: cordis:group',
@@ -224,50 +219,53 @@ test('apply: provides the qwen38LocalQol setup service the settings tab calls', 
     '    - id: compaction-basic',
     '      name: @deepseek-ai/dsh-compaction-basic',
   ].join('\n') + '\n'
-  const home = mkdtempSync(join(tmpdir(), 'qol-setup-service-'))
-  const agentPresets = {
-    read: async (id) => {
-      assert.equal(id, 'standard')
-      return standardText
-    },
+  const home = mkdtempSync(join(tmpdir(), 'qol-auto-apply-'))
+  const source = join(home, 'standard.cordis.yml')
+  writeFileSync(source, standardText)
+  let base
+  const settingsService = { installSection(_owner, _ns, _schema, entry) { base = entry; return () => {} } }
+  const ctx = makeTestCtx({ settings: settingsService }, { registerAdapter: () => () => {} })
+  const realHome = process.env.DSH_HOME
+  const realSource = process.env.DSH_QWEN38_PRESET_SRC
+  process.env.DSH_HOME = home
+  process.env.DSH_QWEN38_PRESET_SRC = source
+  try {
+    plugin.apply(ctx, {})
+    // The preset is generated at boot (the env source wins the resolution
+    // order), the default is set (none was configured), and the section base
+    // reports the post-apply status.
+    const presetFile = join(home, '.agent-presets', 'qwen38-qol', 'agent.cordis.yml')
+    assert.ok(existsSync(presetFile))
+    const written = readFileSync(presetFile, 'utf8')
+    assert.ok(written.includes('dsh-qwen38-local-qol/backend'))
+    assert.ok(written.includes('maxTokens: 24576'))
+    assert.equal(base.compaction.presetGenerated, true)
+    assert.equal(base.compaction.defaultPreset, 'qwen38-qol')
+    const settingsText = readFileSync(join(home, 'settings.yaml'), 'utf8')
+    assert.ok(settingsText.includes('default: qwen38-qol'))
+  } finally {
+    if (realHome === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = realHome
+    if (realSource === undefined) delete process.env.DSH_QWEN38_PRESET_SRC
+    else process.env.DSH_QWEN38_PRESET_SRC = realSource
+    rmSync(home, { recursive: true, force: true })
   }
-  const settingsService = { installSection() { return () => {} } }
-  const ctx = makeTestCtx({ settings: settingsService, agentPresets }, { registerAdapter: () => () => {} })
+})
+
+test('apply: boot auto-apply respects an explicit default preset choice', () => {
+  const home = mkdtempSync(join(tmpdir(), 'qol-auto-apply-'))
+  writeFileSync(join(home, 'settings.yaml'), 'agent-presets:\n  default: standard\n')
+  const ctx = makeTestCtx({}, { registerAdapter: () => () => {} })
   const realHome = process.env.DSH_HOME
   process.env.DSH_HOME = home
   try {
     plugin.apply(ctx, {})
-    const service = ctx.provided.qwen38LocalQol
-    assert.equal(typeof service.setup, 'function')
-    const result = await service.setup()
-    assert.equal(result.ok, true)
-    assert.ok(existsSync(result.preset))
-    assert.ok(existsSync(result.metadata))
-    const written = readFileSync(result.preset, 'utf8')
-    assert.ok(written.includes('dsh-qwen38-local-qol/backend'))
-    assert.ok(written.includes('maxTokens: 24576'))
-    // One-shot: a second call refuses instead of overwriting.
-    const second = await service.setup()
-    assert.equal(second.ok, false)
-    assert.match(second.error, /already exists/)
+    // Whether or not a standard source resolves (the shipped package may be
+    // present or absent in the test tree), the explicit default survives.
+    assert.equal(readFileSync(join(home, 'settings.yaml'), 'utf8'), 'agent-presets:\n  default: standard\n')
   } finally {
     if (realHome === undefined) delete process.env.DSH_HOME
     else process.env.DSH_HOME = realHome
     rmSync(home, { recursive: true, force: true })
   }
 })
-
-test('apply: the setup service fails loud when the preset feature is absent', () => {
-  const settingsService = { installSection() { return () => {} } }
-  const ctx = makeTestCtx({ settings: settingsService }, { registerAdapter: () => () => {} })
-  plugin.apply(ctx, {})
-  return serviceResult(ctx.provided.qwen38LocalQol.setup()).then((result) => {
-    assert.equal(result.ok, false)
-    assert.match(result.error, /agent-presets service is not mounted/)
-  })
-})
-
-/** Run a provided face callback, keeping the test body synchronous-shaped. */
-async function serviceResult(promise) {
-  return promise
-}

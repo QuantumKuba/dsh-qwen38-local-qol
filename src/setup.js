@@ -25,14 +25,24 @@
  * (readCompactionStatus): whether the generated preset exists and which agent
  * preset new sessions default to.
  *
+ * The plugin also self-applies this wiring at every DSH start (see
+ * {@link autoApplyCompaction}): a missing generated preset regenerates from
+ * the standard preset's composition, and the default is set only when none
+ * is configured yet. The CLI remains for a manual re-run.
+ *
  * Usage:
  *   node src/setup.js [--src <preset agent.cordis.yml>]
- *   DSH_QWEN38_PRESET_SRC=<path> node src/setup.js
+ *
+ * Without --src the standard preset resolves in order from the
+ * DSH_QWEN38_PRESET_SRC env, the installed @deepseek-ai/dsh-agent-presets
+ * package, and a user overlay beside the generated preset (the same order
+ * the boot auto-apply uses).
  *
  * @module dsh-qwen38-local-qol/setup
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs'
 import { homedir } from 'node:os'
+import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 
 /** The user preset directory, relative to the DSH home (`.agent-presets`). */
@@ -254,7 +264,7 @@ export function readCompactionStatus(dshHome) {
  * @param sourceText - the standard preset's composition text.
  * @param options - the write behavior.
  * @param options.overwrite - when true (the CLI re-run path) an existing
- *   preset is backed up and replaced; when false (the one-shot host action)
+ *   preset is backed up and replaced; when false (the boot auto-apply path)
  *   an existing preset fails the write instead of being touched.
  * @returns the written preset and metadata paths.
  * @throws {Error} when the preset already exists and overwrite is false.
@@ -276,25 +286,99 @@ export function writeGeneratedPreset(dshHome, sourceText, { overwrite = true } =
 }
 
 /**
+ * Locate the standard preset's composition shipped inside the installed
+ * `@deepseek-ai/dsh-agent-presets` package — the same file the agent-presets
+ * service reads (its shipped root). Resolved without loading the module:
+ * `require.resolve` only walks the `node_modules` chain, so the plugin's
+ * boot stays light.
+ * @returns the composition file path, or undefined when the package is not
+ *   installed (a profile without the preset feature).
+ */
+export function shippedStandardPresetPath() {
+  try {
+    const packageJson = createRequire(import.meta.url).resolve('@deepseek-ai/dsh-agent-presets/package.json')
+    return join(dirname(packageJson), 'presets', 'standard', 'agent.cordis.yml')
+  } catch {
+    // The package is not in this node_modules chain (or its manifest hides
+    // the package.json subpath): the shipped source is unavailable.
+    return undefined
+  }
+}
+
+/**
+ * Resolve the standard preset's composition file for the CLI writer and the
+ * boot auto-apply. Order: the `DSH_QWEN38_PRESET_SRC` override (an explicit
+ * choice), the standard preset shipped inside the installed
+ * `@deepseek-ai/dsh-agent-presets` package (the same source the agent-presets
+ * service reads), then a user overlay beside the generated preset.
+ * @param dshHome - the DSH home directory (the overlay base).
+ * @returns the composition file path.
+ * @throws {Error} when no source is readable.
+ */
+export function resolveStandardSource(dshHome) {
+  const candidates = [
+    process.env.DSH_QWEN38_PRESET_SRC,
+    shippedStandardPresetPath(),
+    join(dshHome, USER_PRESET_DIR, 'standard', 'agent.cordis.yml'),
+  ]
+  const source = candidates.find((candidate) => candidate !== undefined && existsSync(candidate))
+  if (source !== undefined) return source
+  throw new Error(
+    'dsh-qwen38-local-qol: setup: no standard preset source found; pass --src <agent.cordis.yml> '
+    + 'or set DSH_QWEN38_PRESET_SRC (the installed @deepseek-ai/dsh-agent-presets '
+    + 'presets/standard/agent.cordis.yml)',
+  )
+}
+
+/**
+ * Self-apply the compaction wiring (the setup CLI's one-shot, made
+ * automatic): generate the user preset from the standard preset's
+ * composition when it is missing, and set the default agent preset only when
+ * no default is configured yet — an explicit user choice (any value) is
+ * respected on every later boot. Idempotent: an existing preset and an
+ * existing default are left untouched.
+ * @param dshHome - the DSH home directory.
+ * @returns what changed: `applied` (the preset was generated this call), the
+ *   `preset`/`metadata` paths (undefined when the preset already existed),
+ *   and `defaultChanged` ('created', 'appended', or 'none').
+ * @throws {Error} when no standard source is readable or a write fails (the
+ *   caller logs it; the dot stays grey until the next start fixes it).
+ */
+export function autoApplyCompaction(dshHome) {
+  const presetFile = join(dshHome, USER_PRESET_DIR, PRESET_ID, 'agent.cordis.yml')
+  let applied = false
+  let preset
+  let metadata
+  if (!existsSync(presetFile)) {
+    const written = writeGeneratedPreset(dshHome, readFileSync(resolveStandardSource(dshHome), 'utf8'), { overwrite: false })
+    preset = written.preset
+    metadata = written.metadata
+    applied = true
+  }
+  // The lenient read answers undefined for a missing or key-less block; an
+  // explicit default (any value) is respected and never replaced at boot.
+  const settingsPath = join(dshHome, SETTINGS_FILE)
+  const settingsText = existsSync(settingsPath) ? readFileSync(settingsPath, 'utf8') : ''
+  let defaultChanged = 'none'
+  if (readDefaultAgentPreset(settingsText) === undefined) {
+    defaultChanged = ensureDefaultPreset(dshHome).changed
+  }
+  return { applied, preset, metadata, defaultChanged }
+}
+
+/**
  * Run the generator: write the user preset, publish its display metadata,
  * then set it as the default agent preset in the DSH home's settings.yaml.
  * @param options - CLI options.
- * @param options.src - explicit path to the installed standard preset's agent.cordis.yml.
+ * @param options.src - explicit path to a standard preset's agent.cordis.yml
+ *   (defaults to {@link resolveStandardSource}).
  * @param options.home - DSH home override (defaults to env DSH_HOME or ~/.dsh).
  * @returns the written preset path, the settings file path, and what the
  *   default step changed ('created', 'appended', 'replaced', or 'none').
  */
 export function generatePreset({ src, home } = {}) {
   const dshHome = home ?? resolveDshHome()
-  const source = src ?? process.env.DSH_QWEN38_PRESET_SRC
-  if (!source || !existsSync(source)) {
-    throw new Error(
-      'dsh-qwen38-local-qol: setup: no preset source found; pass --src <agent.cordis.yml> '
-      + 'or set DSH_QWEN38_PRESET_SRC (the installed @deepseek-ai/dsh-agent-presets '
-      + 'presets/standard/agent.cordis.yml)',
-    )
-  }
-  const text = readFileSync(source, 'utf8')
+  const text = readFileSync(src ?? resolveStandardSource(dshHome), 'utf8')
   const { preset } = writeGeneratedPreset(dshHome, text, { overwrite: true })
   const { path: settings, changed } = ensureDefaultPreset(dshHome)
   return { preset, settings, defaultChanged: changed }
