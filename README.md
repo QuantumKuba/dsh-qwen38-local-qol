@@ -50,7 +50,7 @@ The settings tab is the primary entry; on headless profiles or via patch/env, th
 | Field | Env var | Default | Meaning |
 |---|---|---|---|
 | `baseURL` | `DSH_QWEN38_BASE_URL` | `http://localhost:8082/v1` | Server address (including `/v1`) |
-| `model` | `DSH_QWEN38_MODEL` | `qwen3.8-27b-nvfp4-uncensored` | The id sent when a request carries no model (`GET /v1/models` to confirm; the llama.cpp line uses its own id) |
+| `model` | `DSH_QWEN38_MODEL` | `qwen3.8-27b-nvfp4` | The id sent when a request carries no model (`GET /v1/models` to confirm; the llama.cpp line uses its own id) |
 | `displayName` | `DSH_QWEN38_DISPLAY_NAME` | the model id | Human-readable name in the GUI picker |
 | `apiKey` | `DSH_QWEN38_API_KEY` | — | The server's `--api-key` (if set) |
 | `dialect` | `DSH_QWEN38_DIALECT` | `llamacpp` | `ninfer` / `llamacpp` (the thinking dialect); a fresh install opens the llama.cpp line |
@@ -163,7 +163,7 @@ DSH 设置 → **Qwen3.8 本地**（web 面）：
 | 字段 | 环境变量 | 默认 | 含义 |
 |---|---|---|---|
 | `baseURL` | `DSH_QWEN38_BASE_URL` | `http://localhost:8082/v1` | 服务器地址（含 `/v1`） |
-| `model` | `DSH_QWEN38_MODEL` | `qwen3.8-27b-nvfp4-uncensored` | 请求未带 model 时发送的 id（`GET /v1/models` 核实；llama.cpp 线用自己的 id） |
+| `model` | `DSH_QWEN38_MODEL` | `qwen3.8-27b-nvfp4` | 请求未带 model 时发送的 id（`GET /v1/models` 核实；llama.cpp 线用自己的 id） |
 | `displayName` | `DSH_QWEN38_DISPLAY_NAME` | model id | GUI 模型选择器的可读名 |
 | `apiKey` | `DSH_QWEN38_API_KEY` | — | 服务器 `--api-key`（如设置） |
 | `dialect` | `DSH_QWEN38_DIALECT` | `llamacpp` | `ninfer` / `llamacpp`（thinking 方言）；新装默认打开 llama.cpp 线 |

@@ -59,7 +59,7 @@ profile（其 tui profile）有效。
       name: dsh-qwen38-local-qol
       config:
         baseURL: http://localhost:8082/v1
-        model: qwen3.8-27b-nvfp4-uncensored
+        model: qwen3.8-27b-nvfp4
         dialect: ninfer
         contextWindow: 229376
         maxTokens: 24576

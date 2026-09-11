@@ -9,8 +9,12 @@
 /** Where the production NInfer 0.5.0 server listens, plus its OpenAI path prefix. */
 export const DEFAULT_BASE_URL = 'http://localhost:8082/v1'
 
-/** Model id sent when nothing configures one; matches the server alias. */
-export const DEFAULT_MODEL = 'qwen3.8-27b-nvfp4-uncensored'
+/**
+ * Model id sent when nothing configures one. A neutral NInfer artifact id —
+ * a server with a custom alias (see GET /v1/models) sets the model field or
+ * the DSH_QWEN38_MODEL env var instead.
+ */
+export const DEFAULT_MODEL = 'qwen3.8-27b-nvfp4'
 
 /** Where the standby llama.cpp line listens (the production 8080 bat). */
 export const DEFAULT_LLAMA_BASE_URL = 'http://localhost:8080/v1'
@@ -128,7 +132,7 @@ export function resolveConfig(config = {}, env = process.env) {
     model: setting(config.model, env.DSH_QWEN38_MODEL, DEFAULT_MODEL),
     /**
      * Human-readable selector name for the model entry. The wire model id is
-     * an artifact alias (e.g. `qwen3.8-27b-nvfp4-uncensored`); the display
+     * an artifact alias (e.g. `qwen3.8-27b-nvfp4`); the display
      * name is what the GUI selector shows. Unset falls back to the model id.
      */
     displayName: setting(config.displayName, env.DSH_QWEN38_DISPLAY_NAME, undefined),

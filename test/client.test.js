@@ -17,7 +17,7 @@ function fakeCtx(overrides = {}) {
       value: {
         dialect: 'ninfer',
         baseURL: 'http://localhost:8082/v1',
-        model: 'qwen3.8-27b-nvfp4-uncensored',
+        model: 'qwen3.8-27b-nvfp4',
         displayName: 'Qwen3.8-27B',
         apiKey: '',
         contextWindow: 229376,
@@ -152,7 +152,7 @@ test('client: a stale-revision write answers a conflict the caller can re-load',
 })
 
 test('toDraft: a fresh section (no user layer) ships the production defaults pre-filled', () => {
-  const draft = client.toDraft({ dialect: 'ninfer', baseURL: 'http://localhost:8082/v1', model: 'qwen3.8-27b-nvfp4-uncensored' })
+  const draft = client.toDraft({ dialect: 'ninfer', baseURL: 'http://localhost:8082/v1', model: 'qwen3.8-27b-nvfp4' })
   assert.equal(draft.contextWindow, '229376')
   assert.equal(draft.maxTokens, '24576')
   assert.equal(draft.low, '4096')
@@ -164,7 +164,7 @@ test('toDraft: a fresh section (no user layer) ships the production defaults pre
   assert.equal(draft.toolChars, '2000')
   // Legacy shape (no user.lines): the active line migrates from the top level.
   assert.equal(draft.baseURL, 'http://localhost:8082/v1')
-  assert.equal(draft.model, 'qwen3.8-27b-nvfp4-uncensored')
+  assert.equal(draft.model, 'qwen3.8-27b-nvfp4')
   assert.equal(draft.parkedBaseURL, '')
   // The parked line's numbers start at the production defaults.
   assert.equal(draft.parkedContextWindow, '229376')
@@ -179,7 +179,7 @@ test('toDraft: a new-shape section reads the active line from lines and parks th
     model: 'Huihui',
     user: { lines: { ninfer: {}, llamacpp: {} } },
     lines: {
-      ninfer: { baseURL: 'http://localhost:8082/v1', model: 'qwen3.8-27b-nvfp4-uncensored', displayName: 'N', contextWindow: 229376, maxTokens: 24576, thinkingBudgets: { low: 4096, medium: 8192, xhigh: 16384 }, defaultThinkingBudget: 8192, summarize: { images: 'keep', keepTurns: 3, toolChars: 1000 } },
+      ninfer: { baseURL: 'http://localhost:8082/v1', model: 'qwen3.8-27b-nvfp4', displayName: 'N', contextWindow: 229376, maxTokens: 24576, thinkingBudgets: { low: 4096, medium: 8192, xhigh: 16384 }, defaultThinkingBudget: 8192, summarize: { images: 'keep', keepTurns: 3, toolChars: 1000 } },
       llamacpp: { baseURL: 'http://localhost:8080/v1', model: 'Huihui', displayName: 'L', contextWindow: 131072, maxTokens: 20480, thinkingBudgets: { low: 2048, medium: 4096, xhigh: 8192 }, defaultThinkingBudget: 32768 },
     },
   }
@@ -202,7 +202,7 @@ test('toDraft: a new-shape section reads the active line from lines and parks th
   assert.equal(draft.toolChars, '2000')
   // The parked NInfer line keeps its own numbers.
   assert.equal(draft.parkedBaseURL, 'http://localhost:8082/v1')
-  assert.equal(draft.parkedModel, 'qwen3.8-27b-nvfp4-uncensored')
+  assert.equal(draft.parkedModel, 'qwen3.8-27b-nvfp4')
   assert.equal(draft.parkedDisplayName, 'N')
   assert.equal(draft.parkedContextWindow, '229376')
   assert.equal(draft.parkedMaxTokens, '24576')
