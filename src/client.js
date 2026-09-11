@@ -140,6 +140,17 @@ function Field({ label, children }) {
 }
 
 /**
+ * Digit-only onChange for the numeric fields: strips anything that is not a
+ * 0-9 character as it is typed (covers typing and paste), so an input never
+ * holds text the save-time integer check would reject.
+ * @param setValue - receives the filtered value.
+ * @returns the onChange handler.
+ */
+function digitsOnly(setValue) {
+  return (e) => { setValue(e.target.value.replace(/\D/g, '')) }
+}
+
+/**
  * Pull the editable draft out of a namespace view's resolved value.
  *
  * The connection fields are per-dialect (`lines`): the draft carries the
@@ -407,21 +418,21 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
       React.createElement('h3', { className: 'qol-groupHead' }, t.window),
       React.createElement('div', { className: 'qol-row2' },
         React.createElement(Field, { label: t.contextWindow },
-          React.createElement(Input, { className: 'qol-input', value: draft.contextWindow, onChange: (e) => { setDraft({ contextWindow: e.target.value }) } })),
+          React.createElement(Input, { className: 'qol-input', inputMode: 'numeric', value: draft.contextWindow, onChange: digitsOnly((v) => { setDraft({ contextWindow: v }) }) })),
         React.createElement(Field, { label: t.maxTokens },
-          React.createElement(Input, { className: 'qol-input', value: draft.maxTokens, onChange: (e) => { setDraft({ maxTokens: e.target.value }) } })),
+          React.createElement(Input, { className: 'qol-input', inputMode: 'numeric', value: draft.maxTokens, onChange: digitsOnly((v) => { setDraft({ maxTokens: v }) }) })),
       ),
     ),
     React.createElement('section', { className: 'qol-group' },
       React.createElement('h3', { className: 'qol-groupHead' }, t.thinking),
       ninfer
         ? React.createElement(Field, { label: t.thinkingAll },
-          React.createElement(Input, { className: 'qol-input', value: draft.defaultBudget, onChange: (e) => { setDraft({ defaultBudget: e.target.value }) } }))
+          React.createElement(Input, { className: 'qol-input', inputMode: 'numeric', value: draft.defaultBudget, onChange: digitsOnly((v) => { setDraft({ defaultBudget: v }) }) }))
         : null,
       React.createElement('div', { className: ninfer ? 'qol-row3 qol-muted' : 'qol-row3' },
         ['low', 'medium', 'xhigh'].map((effort) =>
           React.createElement(Field, { key: effort, label: effort },
-            React.createElement(Input, { className: 'qol-input', disabled: ninfer, value: draft[effort], onChange: (e) => { setDraft({ [effort]: e.target.value }) } })),
+            React.createElement(Input, { className: 'qol-input', inputMode: 'numeric', disabled: ninfer, value: draft[effort], onChange: digitsOnly((v) => { setDraft({ [effort]: v }) }) })),
         ),
       ),
       React.createElement('p', { className: 'qol-hint' }, ninfer ? t.thinkingHintNinfer : t.thinkingHintLlamacpp),
@@ -448,9 +459,9 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
       ),
       React.createElement('div', { className: 'qol-row2' },
         React.createElement(Field, { label: t.keepTurns },
-          React.createElement(Input, { className: 'qol-input', value: draft.keepTurns, onChange: (e) => { setDraft({ keepTurns: e.target.value }) } })),
+          React.createElement(Input, { className: 'qol-input', inputMode: 'numeric', value: draft.keepTurns, onChange: digitsOnly((v) => { setDraft({ keepTurns: v }) }) })),
         React.createElement(Field, { label: t.toolChars },
-          React.createElement(Input, { className: 'qol-input', value: draft.toolChars, onChange: (e) => { setDraft({ toolChars: e.target.value }) } })),
+          React.createElement(Input, { className: 'qol-input', inputMode: 'numeric', value: draft.toolChars, onChange: digitsOnly((v) => { setDraft({ toolChars: v }) }) })),
       ),
     ),
     React.createElement('div', { className: 'qol-footer' },
