@@ -12,7 +12,7 @@
 import { QwenLocalAdapter } from './adapter.js'
 import { resolveConfig, DEFAULT_PROVIDER } from './config.js'
 import { NS, sectionSchema, validateSection } from './settings-section.js'
-import { resolveDshHome, readCompactionStatus } from './setup.js'
+import { resolveDshHome, readCompactionStatus, writeGeneratedPreset } from './setup.js'
 
 export { QwenLocalAdapter, PROVIDER_NAME, PROVIDER_HTTP_ERROR_CODE, PROVIDER_UNREACHABLE_CODE } from './adapter.js'
 export {
@@ -62,6 +62,26 @@ export function apply(ctx, config = {}) {
   // degrade to text placeholders for the process lifetime.
   ctx.inject(['attachments'], (attachmentCtx) => {
     attachment = attachmentCtx.attachments
+  })
+  // The settings tab's "generate the preset" action (the not-set-up status):
+  // the host reads the standard composition through the agent-presets service
+  // and writes the transformed user preset files. `ctx.get` at call time (not
+  // at apply time) so the action answers whatever the boot provided and fails
+  // loud on a profile without the preset feature.
+  ctx.provide('qwen38LocalQol', {
+    setup: async () => {
+      try {
+        const agentPresets = ctx.get('agentPresets')
+        if (agentPresets === undefined) {
+          return { ok: false, error: 'the agent-presets service is not mounted on this profile' }
+        }
+        const text = await agentPresets.read('standard')
+        const { preset, metadata } = writeGeneratedPreset(resolveDshHome(), text, { overwrite: false })
+        return { ok: true, preset, metadata }
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) }
+      }
+    },
   })
   const adapter = new QwenLocalAdapter(() => ({ ...current(), attachment }))
   return ctx.llm.registerAdapter(resolved.provider, adapter)

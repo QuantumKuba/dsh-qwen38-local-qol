@@ -248,6 +248,34 @@ export function readCompactionStatus(dshHome) {
 }
 
 /**
+ * Transform the standard composition and write the generated preset files
+ * (composition + display metadata) into the DSH home.
+ * @param dshHome - the DSH home directory.
+ * @param sourceText - the standard preset's composition text.
+ * @param options - the write behavior.
+ * @param options.overwrite - when true (the CLI re-run path) an existing
+ *   preset is backed up and replaced; when false (the one-shot host action)
+ *   an existing preset fails the write instead of being touched.
+ * @returns the written preset and metadata paths.
+ * @throws {Error} when the preset already exists and overwrite is false.
+ */
+export function writeGeneratedPreset(dshHome, sourceText, { overwrite = true } = {}) {
+  const transformed = transformPreset(sourceText)
+  const dir = join(dshHome, USER_PRESET_DIR, PRESET_ID)
+  const target = join(dir, 'agent.cordis.yml')
+  const metadataTarget = join(dir, PRESET_METADATA_FILE)
+  if (!overwrite && (existsSync(target) || existsSync(metadataTarget))) {
+    throw new Error(`dsh-qwen38-local-qol: setup: the preset already exists at ${target}; remove it to regenerate`)
+  }
+  if (existsSync(target)) copyFileSync(target, `${target}.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`)
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(target, transformed)
+  if (existsSync(metadataTarget)) copyFileSync(metadataTarget, `${metadataTarget}.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`)
+  writeFileSync(metadataTarget, renderPresetMetadata())
+  return { preset: target, metadata: metadataTarget }
+}
+
+/**
  * Run the generator: write the user preset, publish its display metadata,
  * then set it as the default agent preset in the DSH home's settings.yaml.
  * @param options - CLI options.
@@ -267,21 +295,9 @@ export function generatePreset({ src, home } = {}) {
     )
   }
   const text = readFileSync(source, 'utf8')
-  const transformed = transformPreset(text)
-  const dir = join(dshHome, USER_PRESET_DIR, PRESET_ID)
-  const target = join(dir, 'agent.cordis.yml')
-  if (existsSync(target)) {
-    copyFileSync(target, `${target}.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`)
-  }
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(target, transformed)
-  const metadataTarget = join(dir, PRESET_METADATA_FILE)
-  if (existsSync(metadataTarget)) {
-    copyFileSync(metadataTarget, `${metadataTarget}.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`)
-  }
-  writeFileSync(metadataTarget, renderPresetMetadata())
+  const { preset } = writeGeneratedPreset(dshHome, text, { overwrite: true })
   const { path: settings, changed } = ensureDefaultPreset(dshHome)
-  return { preset: target, settings, defaultChanged: changed }
+  return { preset, settings, defaultChanged: changed }
 }
 
 const argv = process.argv.slice(2)

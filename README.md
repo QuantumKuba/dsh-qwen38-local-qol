@@ -171,7 +171,13 @@ The tab, both lines:
   `qwen38-qol` preset (the preset layer), while the wire-layer rules
   (compaction thinking-off and the output cap) apply to every qwen38 session
   regardless of the preset. The status is read at boot, so running the setup
-  or changing the default preset shows up on the next DSH start.
+  or changing the default preset shows up on the next DSH start — except
+  that the tab offers both changes in place: a **Generate the preset** button
+  (the host reads the standard preset through the agent-presets service and
+  writes the transformed files; one-shot, it refuses to overwrite) and a
+  **Set as the default preset** button (the same settings write the Agent
+  presets page performs) — after either succeeds the status line flips
+  without a restart and new sessions pick the change up immediately.
 - **Per-dialect line memory**: the section persists a `lines` block
   (`lines.ninfer` / `lines.llamacpp`) where each line remembers its own
   connection (`baseURL` / `model` / `displayName`), its own window numbers
@@ -452,7 +458,10 @@ tab 实况（两条线）：
   `qwen38-qol` 预设是否存在、新会话默认用哪个 agent 预设。有意义是因为裁剪
   旋钮只对使用 `qwen38-qol` 预设的会话生效（preset 层），而 wire 层规则
   （压缩 thinking off 与输出帽）对所有 qwen38 会话常开、与预设无关。状态在
-  启动时读取——跑 setup 或改默认预设后，下次 DSH 启动生效。
+  启动时读取——跑 setup 或改默认预设后，下次 DSH 启动生效；不过 tab 里可以
+  直接完成这两个变更：**生成预设**按钮（宿主经 agent-presets 服务读 standard
+  预设并写入变换后的文件；一次性、拒覆盖）与**设为默认预设**按钮（与 Agent
+  预设页相同的设置写入）——任一成功即当场刷新状态行，新会话立即生效，无需重启。
 - **按方言的线记忆**：section 持久化 `lines` 块（`lines.ninfer` /
   `lines.llamacpp`），每条线记住自己的连接（`baseURL` / `model` /
   `displayName`）、窗口数字（`contextWindow` / `maxTokens` /

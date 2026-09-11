@@ -4,9 +4,9 @@
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import {
   transformPreset,
   findNameLine,
@@ -16,6 +16,7 @@ import {
   renderPresetMetadata,
   readDefaultAgentPreset,
   readCompactionStatus,
+  writeGeneratedPreset,
   PRESET_ID,
   PRESET_DESCRIPTION,
 } from '../src/setup.js'
@@ -179,6 +180,23 @@ test('readDefaultAgentPreset: lenient read of the default preset key', () => {
   assert.equal(readDefaultAgentPreset('agent-presets:\r\n  default: qwen38-qol\r\n'), 'qwen38-qol')
   // Duplicated sections: the first one wins.
   assert.equal(readDefaultAgentPreset('agent-presets:\n  default: standard\nagent-presets:\n  default: qwen38-qol\n'), 'standard')
+})
+
+test('writeGeneratedPreset: one-shot write refuses an existing preset, CLI path backs up', () => {
+  const home = mkdtempSync(join(tmpdir(), 'qol-write-preset-'))
+  const sourceText = PRESET
+  try {
+    const first = writeGeneratedPreset(home, sourceText, { overwrite: false })
+    assert.ok(existsSync(first.preset))
+    assert.ok(existsSync(first.metadata))
+    assert.throws(() => writeGeneratedPreset(home, sourceText, { overwrite: false }), /already exists/)
+    const second = writeGeneratedPreset(home, sourceText, { overwrite: true })
+    assert.ok(existsSync(second.preset))
+    const backups = readdirSync(dirname(second.preset)).filter((name) => name.includes('.bak-'))
+    assert.ok(backups.length >= 2)
+  } finally {
+    rmSync(home, { recursive: true, force: true })
+  }
 })
 
 test('readCompactionStatus: reports the preset existence and the default preset', () => {

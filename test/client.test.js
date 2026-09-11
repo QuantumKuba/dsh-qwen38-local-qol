@@ -29,10 +29,18 @@ function fakeCtx(overrides = {}) {
         summarize: { images: 'strip', keepTurns: 5, toolChars: 2000 },
         compaction: { presetGenerated: true, defaultPreset: 'qwen38-qol' },
       },
+    }, {
+      ns: 'agent-presets',
+      revision: 3,
+      value: { default: 'standard', enabled: true },
     }],
   }
+  let setupCalls = 0
   const ctx = {
     locale: { getSnapshot: () => ({ active: 'zh' }) },
+    qwen38LocalQol: {
+      setup: async () => { setupCalls += 1; return { ok: true, preset: 'preset-path', metadata: 'metadata-path' } },
+    },
     slots: {
       inject(_name, callback) { callback() },
       register(_options, _component) {},
@@ -42,21 +50,23 @@ function fakeCtx(overrides = {}) {
         describe: async () => { describeCalls.push(undefined); return { ok: true, value: { namespaces: state.namespaces.map((entry) => ({ ...entry, value: { ...entry.value } })) } } },
         update: async (ns, patch, revision) => {
           updateCalls.push({ ns, patch, revision })
-          if (overrides.conflictNext && revision !== state.namespaces[0].revision) {
+          const index = state.namespaces.findIndex((entry) => entry.ns === ns)
+          const target = state.namespaces[index]
+          if (overrides.conflictNext && revision !== target.revision) {
             return { ok: false, error: { code: 'settings/conflict', message: 'stale revision' } }
           }
-          state.namespaces[0] = { ns, revision: state.namespaces[0].revision + 1, value: { ...state.namespaces[0].value, ...patch } }
-          return { ok: true, value: state.namespaces[0] }
+          state.namespaces[index] = { ...target, revision: target.revision + 1, value: { ...target.value, ...patch } }
+          return { ok: true, value: state.namespaces[index] }
         },
       },
     },
   }
-  return { ctx, describeCalls, updateCalls, state, registrations: { list: [] } }
+  return { ctx, describeCalls, updateCalls, state, registrations: { list: [] }, setupCalls: () => setupCalls }
 }
 
 test('client contract: named exports for the function-plugin loader', () => {
   assert.equal(client.name, 'qwen38-local-qol')
-  assert.deepEqual(client.inject, ['slots', 'locale', 'remote', 'remote.settings'])
+  assert.deepEqual(client.inject, ['slots', 'locale', 'remote', 'remote.settings', 'qwen38LocalQol'])
   assert.equal(typeof client.apply, 'function')
   assert.equal(typeof client.compactionStatusCopy, 'function')
   assert.equal(typeof client.compactionStatusColor, 'function')
@@ -79,6 +89,39 @@ test('compactionStatusColor: green active, amber available, grey not set up', ()
   assert.equal(client.compactionStatusColor({ presetGenerated: false, defaultPreset: 'standard' }), 'rgba(128, 128, 128, 0.55)')
   assert.equal(client.compactionStatusColor({ presetGenerated: true, defaultPreset: 'qwen38-qol' }), '#4ade80')
   assert.equal(client.compactionStatusColor({ presetGenerated: true, defaultPreset: 'standard' }), '#fbbf24')
+})
+
+test('client: the load face reports the agent-presets default for the status actions', async () => {
+  const { ctx } = fakeCtx()
+  let captured = null
+  ctx.slots.register = (option) => { captured = option.inject() }
+  client.apply(ctx)
+  const loaded = await captured.load()
+  assert.equal(loaded.ok, true)
+  assert.deepEqual(loaded.agentPresets, { revision: 3, defaultPreset: 'standard' })
+})
+
+test('client: the face setup calls the provided host service', async () => {
+  const { ctx, setupCalls } = fakeCtx()
+  let captured = null
+  ctx.slots.register = (option) => { captured = option.inject() }
+  client.apply(ctx)
+  const result = await captured.setup()
+  assert.equal(result.ok, true)
+  assert.equal(result.preset, 'preset-path')
+  assert.equal(setupCalls(), 1)
+})
+
+test('client: the face setDefault writes the agent-presets default with the held revision', async () => {
+  const { ctx, updateCalls } = fakeCtx()
+  let captured = null
+  ctx.slots.register = (option) => { captured = option.inject() }
+  client.apply(ctx)
+  const loaded = await captured.load()
+  const result = await captured.setDefault(loaded.agentPresets.revision)
+  assert.equal(result.ok, true)
+  assert.equal(result.value.revision, 4)
+  assert.deepEqual(updateCalls.at(-1), { ns: 'agent-presets', patch: { default: 'qwen38-qol' }, revision: 3 })
 })
 
 test('client: registers one settings.section page with a localized label', () => {
