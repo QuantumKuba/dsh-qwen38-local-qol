@@ -102,12 +102,14 @@
   accent-color: var(--dsw-alias-brand-primary);
 }
 
-/* Two-field rows: the fields take the effort-cap row's width, left-packed
-   with that row's 42px gap. */
+/* Two-field rows: written exactly like the effort-cap row below — the same
+   164px fields with space-between. Two fields cannot fill the 576px content
+   width at 42px gaps, so the middle gap takes the remainder (~248px). */
 .qol-row2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 164px));
-  column-gap: 42px;
+  gap: 12px;
+  justify-content: space-between;
 }
 
 /* The effort-cap row: capped fields read as three separate inputs (42px
