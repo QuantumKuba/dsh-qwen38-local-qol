@@ -15,6 +15,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
   max-width: 720px;
   color: var(--dsw-alias-label-primary);
 }
@@ -50,12 +51,26 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .qol-fieldLabel {
   font-size: 12px;
   font-weight: 500;
   color: var(--dsw-alias-label-secondary);
+}
+
+/* The switch label reads as inline text so the toggle sits beside it. */
+.qol-switchLabel {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* The shared Input's wrapper is inline-flex (content-sized); force it to the
+   field width so grid tracks size by the track, not the input's intrinsic
+   size (~20ch), which would overflow the settings content column. */
+.qol-input {
+  width: 100%;
 }
 
 .qol-hint {
@@ -84,13 +99,13 @@
 
 .qol-row2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .qol-row3 {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -112,11 +127,11 @@
   margin-top: 4px;
 }
 
+/* The toggle sits right beside its label, not at the row's far edge. */
 .qol-switchHead {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 
 .qol-footer {
