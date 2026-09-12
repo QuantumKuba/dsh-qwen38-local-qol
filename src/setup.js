@@ -50,8 +50,8 @@ import { dirname, join } from 'node:path'
 export const USER_PRESET_DIR = '.agent-presets'
 /** The generated preset id (the directory name; shown as the card id badge in the GUI). */
 export const PRESET_ID = 'qwen38'
-/** The display name published in the preset metadata (the picker shows it instead of the id). */
-export const PRESET_NAME = 'Qwen38模式 | Qwen38 Mode'
+/** The display names published in the preset metadata, per locale (the picker shows the reader's own locale). */
+export const PRESET_NAMES = { zh: 'Qwen38模式', en: 'Qwen38 Mode' }
 /** The backend row id inside the preset's compaction group. */
 export const BACKEND_ROW_ID = 'compaction-basic'
 /**
@@ -211,12 +211,13 @@ export function ensureDefaultPreset(dshHome) {
 
 /**
  * Render the preset.yml document published beside the generated composition.
- * @returns the YAML text (the name and description keys; the description is a
- *   block scalar so the multi-line value survives).
+ * @returns the YAML text (the name key as a locale map, and the description
+ *   as a block scalar so the multi-line value survives).
  */
 export function renderPresetMetadata() {
   const body = PRESET_DESCRIPTION.split('\n').map((line) => `  ${line}`).join('\n')
-  return `name: ${PRESET_NAME}\ndescription: |-\n${body}\n`
+  const names = Object.entries(PRESET_NAMES).map(([locale, label]) => `  ${locale}: ${label}`).join('\n')
+  return `name:\n${names}\ndescription: |-\n${body}\n`
 }
 
 /**
