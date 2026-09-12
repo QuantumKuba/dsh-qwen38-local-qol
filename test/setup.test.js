@@ -19,7 +19,7 @@ import {
   readCompactionStatus,
   writeGeneratedPreset,
   PRESET_ID,
-  PRESET_DESCRIPTION,
+  PRESET_DESCRIPTIONS,
 } from '../src/setup.js'
 
 const PRESET = [
@@ -166,9 +166,10 @@ test('applyDefaultPreset: leaves a nested agent-presets key alone', () => {
   assert.ok(text.includes('plugins:\n  agent-presets: true'))
 })
 
-test('renderPresetMetadata: publishes the bilingual description as a YAML block scalar', () => {
-  assert.equal(PRESET_DESCRIPTION, '标准模式 + 自定义压缩 | Standard mode + custom compaction')
-  assert.equal(renderPresetMetadata(), 'name:\n  zh: Qwen38模式\n  en: Qwen38 Mode\ndescription: |-\n  标准模式 + 自定义压缩 | Standard mode + custom compaction\n')
+test('renderPresetMetadata: publishes the name and description as locale maps', () => {
+  assert.equal(PRESET_DESCRIPTIONS.zh, '标准模式 + 自定义压缩')
+  assert.equal(PRESET_DESCRIPTIONS.en, 'Standard mode + custom compaction')
+  assert.equal(renderPresetMetadata(), 'name:\n  zh: Qwen38模式\n  en: Qwen38 Mode\ndescription:\n  zh: 标准模式 + 自定义压缩\n  en: Standard mode + custom compaction\n')
 })
 
 test('readDefaultAgentPreset: lenient read of the default preset key', () => {

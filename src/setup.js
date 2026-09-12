@@ -72,8 +72,8 @@ export const AGENT_PRESETS_SECTION = 'agent-presets'
 export const DEFAULT_KEY = 'default'
 /** The display-metadata file beside a preset's composition (the agent-preset picker reads name/description/order from it). */
 export const PRESET_METADATA_FILE = 'preset.yml'
-/** The description the generated preset publishes about itself (bilingual, one line, '|' separated; the picker shows one unlocalized string for user presets). */
-export const PRESET_DESCRIPTION = '标准模式 + 自定义压缩 | Standard mode + custom compaction'
+/** The descriptions the generated preset publishes about itself, per locale (the picker shows the reader's own locale). */
+export const PRESET_DESCRIPTIONS = { zh: '标准模式 + 自定义压缩', en: 'Standard mode + custom compaction' }
 
 /**
  * Resolve the DSH home directory.
@@ -211,13 +211,12 @@ export function ensureDefaultPreset(dshHome) {
 
 /**
  * Render the preset.yml document published beside the generated composition.
- * @returns the YAML text (the name key as a locale map, and the description
- *   as a block scalar so the multi-line value survives).
+ * @returns the YAML text (the name and description keys as locale maps).
  */
 export function renderPresetMetadata() {
-  const body = PRESET_DESCRIPTION.split('\n').map((line) => `  ${line}`).join('\n')
   const names = Object.entries(PRESET_NAMES).map(([locale, label]) => `  ${locale}: ${label}`).join('\n')
-  return `name:\n${names}\ndescription: |-\n${body}\n`
+  const descriptions = Object.entries(PRESET_DESCRIPTIONS).map(([locale, label]) => `  ${locale}: ${label}`).join('\n')
+  return `name:\n${names}\ndescription:\n${descriptions}\n`
 }
 
 /**
