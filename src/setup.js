@@ -51,7 +51,7 @@ export const USER_PRESET_DIR = '.agent-presets'
 /** The generated preset id (the directory name; shown as the card id badge in the GUI). */
 export const PRESET_ID = 'qwen38'
 /** The display names published in the preset metadata, per locale (the picker shows the reader's own locale). */
-export const PRESET_NAMES = { zh: 'Qwen38模式', en: 'Qwen38 Mode' }
+export const PRESET_NAMES = { zh: 'Qwen38模式', en: 'Qwen38 mode' }
 /** The backend row id inside the preset's compaction group. */
 export const BACKEND_ROW_ID = 'compaction-basic'
 /**
