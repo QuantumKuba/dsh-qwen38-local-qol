@@ -14,9 +14,7 @@ Restart `dsh web` — the compaction wiring self-applies at boot: the **`qwen38`
 
 The generated preset on the Agent presets page (its display name and description are published per locale and render for the reader's own language):
 
-| en | zh |
-|---|---|
-| ![the generated qwen38 preset, English interface](<docs/qwen38 preset-en.png>) | ![the generated qwen38 preset, Chinese interface](<docs/qwen38 preset-cn.png>) |
+![the generated qwen38 preset](<docs/qwen38 preset-en.png>)
 
 `setup.js` performs the same write manually (regenerates the preset from the live installed standard, forces the default, dated backups of every file it changes): `node_modules/dsh-qwen38-local-qol/src/setup.js`. `dsh --profile <name> --patch <plugin>/cordis.patch.yml --dump-config` shows the composed provider line without booting.
 
@@ -30,9 +28,7 @@ The generated preset on the Agent presets page (its display name and description
 
 DSH settings → **Qwen3.8 Local** (web surface):
 
-| en | zh |
-|---|---|
-| ![the Qwen3.8 Local settings tab, English interface](<docs/qwen38 tab-en.png>) | ![the Qwen3.8 Local settings tab, Chinese interface](<docs/qwen38 tab-cn.png>) |
+![the Qwen3.8 Local settings tab](<docs/qwen38 tab-en.png>)
 
 - **Line selector + per-line memory.** Each line keeps its own connection, window numbers, budgets and trim knobs — switching lines swaps the two memories. The context window is a property of the **line** (its server build), not of the model.
 - **One-time defaults.** Window numbers, trim knobs and both production connections are schema defaults — a fresh install pre-fills the whole form; type only what differs.
@@ -116,9 +112,7 @@ dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
 
 生成的 preset 在 Agent 预设页的样子（显示名与描述按语言发布、按读者语言渲染）：
 
-| en | zh |
-|---|---|
-| ![生成的 qwen38 预设，英文界面](<docs/qwen38 preset-en.png>) | ![生成的 qwen38 预设，中文界面](<docs/qwen38 preset-cn.png>) |
+![生成的 qwen38 预设](<docs/qwen38 preset-cn.png>)
 
 `setup.js` 手动执行同样的写入（从已安装的 standard 重新生成 preset、强制设默认、改动的文件留日期备份）：`node_modules/dsh-qwen38-local-qol/src/setup.js`。`dsh --profile <name> --patch <plugin>/cordis.patch.yml --dump-config` 可在不启动的情况下查看组合后的 provider 行。
 
@@ -132,9 +126,7 @@ dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
 
 DSH 设置 → **Qwen3.8 本地**（web 面）：
 
-| en | zh |
-|---|---|
-| ![Qwen3.8 本地设置页，英文界面](<docs/qwen38 tab-en.png>) | ![Qwen3.8 本地设置页，中文界面](<docs/qwen38 tab-cn.png>) |
+![Qwen3.8 本地设置页](<docs/qwen38 tab-cn.png>)
 
 - **服务器线切换 + 按线记忆。** 每条线记住自己的连接、窗口数字、预算与裁剪旋钮——切线 = 两条记忆互换。上下文窗口是**线**（其服务器构建）的属性，不是模型的属性。
 - **填一次默认值。** 窗口数字、裁剪旋钮、两条线的生产连接都是 schema 默认——新安装整表预填，只需填与默认不同的字段。
