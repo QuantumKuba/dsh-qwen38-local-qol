@@ -78,7 +78,7 @@ export function sectionSchema() {
   return Schema.object({
     dialect: Schema.string().default(DIALECT_LLAMACPP),
     baseURL: Schema.string().default(DEFAULT_BASE_URL),
-    model: Schema.string().default(DEFAULT_MODEL),
+    model: Schema.string().default(DEFAULT_LLAMA_MODEL),
     displayName: Schema.string().default(''),
     lines: Schema.object({
       ninfer: lineSchema(DEFAULT_BASE_URL, DEFAULT_MODEL, DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_TOKENS, DEFAULT_THINKING_BUDGETS),

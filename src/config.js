@@ -10,8 +10,8 @@
 export const DEFAULT_BASE_URL = 'http://localhost:8082/v1'
 
 /**
- * Model id sent when nothing configures one. A neutral NInfer artifact id —
- * a server with a custom alias (see GET /v1/models) sets the model field or
+ * NInfer line model id when nothing configures one: the NInfer artifact id.
+ * A server with a custom alias (see GET /v1/models) sets the model field or
  * the DSH_QWEN38_MODEL env var instead.
  */
 export const DEFAULT_MODEL = 'qwen3.8-27b-nvfp4'
@@ -20,10 +20,11 @@ export const DEFAULT_MODEL = 'qwen3.8-27b-nvfp4'
 export const DEFAULT_LLAMA_BASE_URL = 'http://localhost:8080/v1'
 
 /**
- * Standby llama line model id: the GGUF basename (llama-server's default
- * OpenAI alias for `-m <file>` with no `--alias` override).
+ * llama.cpp line model id when nothing configures one: the neutral GGUF
+ * basename (llama-server's default OpenAI alias for `-m <file>` with no
+ * `--alias` override).
  */
-export const DEFAULT_LLAMA_MODEL = 'Huihui-Qwen3.8-27B-abliterated-UD-Q5_K_XL'
+export const DEFAULT_LLAMA_MODEL = 'qwen3.8-27b.gguf'
 
 /** The single provider route this plugin registers unless configured otherwise. */
 export const DEFAULT_PROVIDER = 'qwen38'
@@ -129,10 +130,12 @@ export function resolveConfig(config = {}, env = process.env) {
 
   return {
     baseURL: setting(config.baseURL, env.DSH_QWEN38_BASE_URL, DEFAULT_BASE_URL),
-    model: setting(config.model, env.DSH_QWEN38_MODEL, DEFAULT_MODEL),
+    // The model default follows the dialect: each line pre-fills its own
+    // artifact basename (NInfer nvfp4 / llama GGUF).
+    model: setting(config.model, env.DSH_QWEN38_MODEL, dialect === DIALECT_NINFER ? DEFAULT_MODEL : DEFAULT_LLAMA_MODEL),
     /**
      * Human-readable selector name for the model entry. The wire model id is
-     * an artifact alias (e.g. `qwen3.8-27b-nvfp4`); the display
+     * an artifact basename (e.g. a GGUF file name); the display
      * name is what the GUI selector shows. Unset falls back to the model id.
      */
     displayName: setting(config.displayName, env.DSH_QWEN38_DISPLAY_NAME, undefined),

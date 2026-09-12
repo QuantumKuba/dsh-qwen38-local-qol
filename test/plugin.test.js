@@ -97,14 +97,14 @@ test('apply: installs the user-settings section; the adapter reads the live reso
     assert.equal(installCalls.length, 1)
     assert.equal(installCalls[0].ns, 'qwen38-local-qol')
     // The base is the fully resolved row (every field present), not the raw config.
-    assert.equal(installCalls[0].entry.model, 'qwen3.8-27b-nvfp4')
+    assert.equal(installCalls[0].entry.model, 'qwen3.8-27b.gguf')
     assert.equal(installCalls[0].entry.contextWindow, 229376)
 
     // First request: the default general line (the llama.cpp wire: effort
     // travels in chat_template_kwargs, the budget rides top-level on both
     // dialects).
     let sent = await streamOnce('medium')
-    assert.equal(sent.model, 'qwen3.8-27b-nvfp4')
+    assert.equal(sent.model, 'qwen3.8-27b.gguf')
     assert.equal(sent.chat_template_kwargs.reasoning_effort, 'medium')
     assert.equal(sent.reasoning_budget_tokens, 8192)
 

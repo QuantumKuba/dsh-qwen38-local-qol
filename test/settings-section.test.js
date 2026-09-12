@@ -25,7 +25,7 @@ test('sectionSchema: a fully-default value opens on the general default (llama.c
   const resolved = schema({})
   assert.equal(resolved.dialect, 'llamacpp')
   assert.equal(resolved.baseURL, DEFAULT_BASE_URL)
-  assert.equal(resolved.model, DEFAULT_MODEL)
+  assert.equal(resolved.model, DEFAULT_LLAMA_MODEL)
   assert.equal(resolved.displayName, '')
   assert.equal(resolved.apiKey, '')
   assert.equal(resolved.contextWindow, DEFAULT_CONTEXT_WINDOW)
@@ -45,7 +45,7 @@ test('sectionSchema: partial user layers fill the missing fields', () => {
   const resolved = schema({ dialect: 'llamacpp', baseURL: 'http://localhost:8080/v1' })
   assert.equal(resolved.dialect, 'llamacpp')
   assert.equal(resolved.baseURL, 'http://localhost:8080/v1')
-  assert.equal(resolved.model, DEFAULT_MODEL)
+  assert.equal(resolved.model, DEFAULT_LLAMA_MODEL)
   assert.equal(resolved.contextWindow, DEFAULT_CONTEXT_WINDOW)
 })
 

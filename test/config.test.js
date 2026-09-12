@@ -3,12 +3,15 @@
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveConfig, DEFAULT_BASE_URL, DEFAULT_MODEL, DEFAULT_THINKING_BUDGETS } from '../src/config.js'
+import { resolveConfig, DEFAULT_BASE_URL, DEFAULT_MODEL, DEFAULT_LLAMA_MODEL, DEFAULT_THINKING_BUDGETS } from '../src/config.js'
 
 test('resolveConfig: built-in defaults open on the general default (llama.cpp line)', () => {
   const resolved = resolveConfig({}, {})
   assert.equal(resolved.baseURL, DEFAULT_BASE_URL)
-  assert.equal(resolved.model, DEFAULT_MODEL)
+  // The model default follows the dialect: the default dialect (llama.cpp)
+  // pre-fills the GGUF basename; the NInfer dialect pre-fills its artifact id.
+  assert.equal(resolved.model, DEFAULT_LLAMA_MODEL)
+  assert.equal(resolveConfig({ dialect: 'ninfer' }, {}).model, DEFAULT_MODEL)
   assert.equal(resolved.apiKey, undefined)
   assert.equal(resolved.dialect, 'llamacpp')
   assert.equal(resolved.contextWindow, 229376)
