@@ -7,13 +7,13 @@
  *
  * Reads the installed standard preset's `agent.cordis.yml`, swaps the
  * `compaction-basic` row for this package's backend (and pins its
- * `maxTokens`), and writes `~/.dsh/.agent-presets/qwen38-qol/agent.cordis.yml`.
+ * `maxTokens`), and writes `~/.dsh/.agent-presets/qwen38/agent.cordis.yml`.
  * The generated preset is regenerated from the live installed preset on every
  * run, so it tracks DSH releases without a re-cut diff — but only files whose
  * content actually changed are written, and only those get a dated `.bak-`
  * backup (a re-run with the same standard preset is a no-op).
  *
- * Also merges `agent-presets: { default: qwen38-qol }` into
+ * Also merges `agent-presets: { default: qwen38 }` into
  * `~/.dsh/settings.yaml` (a dated backup of the file when it changed) so new
  * sessions use the preset automatically; an already-set default is left
  * untouched (idempotent re-runs).
@@ -48,8 +48,10 @@ import { dirname, join } from 'node:path'
 
 /** The user preset directory, relative to the DSH home (`.agent-presets`). */
 export const USER_PRESET_DIR = '.agent-presets'
-/** The generated preset id (the directory name; shown in the GUI preset selector). */
-export const PRESET_ID = 'qwen38-qol'
+/** The generated preset id (the directory name; shown as the card id badge in the GUI). */
+export const PRESET_ID = 'qwen38'
+/** The display name published in the preset metadata (the picker shows it instead of the id). */
+export const PRESET_NAME = 'Qwen38模式'
 /** The backend row id inside the preset's compaction group. */
 export const BACKEND_ROW_ID = 'compaction-basic'
 /**
@@ -130,12 +132,12 @@ export function transformPreset(text) {
 }
 
 /**
- * Merge `agent-presets: { default: qwen38-qol }` into a `settings.yaml`
+ * Merge `agent-presets: { default: qwen38 }` into a `settings.yaml`
  * text. Strict anchors: at most one top-level `agent-presets:` block line and
  * at most one `default:` key inside it; an inline value, a duplicated
  * section, or a duplicated key fails loud instead of writing a guess. Line
  * endings are preserved on replace. Idempotent: an existing
- * `default: qwen38-qol` returns the text unchanged.
+ * `default: qwen38` returns the text unchanged.
  * @param text - the settings.yaml content; '' for a missing or empty file.
  * @returns the new text and what changed: 'created', 'appended', 'replaced',
  *   or 'none'.
@@ -209,13 +211,12 @@ export function ensureDefaultPreset(dshHome) {
 
 /**
  * Render the preset.yml document published beside the generated composition.
- * @returns the YAML text (the description key only, as a block scalar so the
- *   multi-line value survives; the picker falls back to the preset id for the
- *   name).
+ * @returns the YAML text (the name and description keys; the description is a
+ *   block scalar so the multi-line value survives).
  */
 export function renderPresetMetadata() {
   const body = PRESET_DESCRIPTION.split('\n').map((line) => `  ${line}`).join('\n')
-  return `description: |-\n${body}\n`
+  return `name: ${PRESET_NAME}\ndescription: |-\n${body}\n`
 }
 
 /**

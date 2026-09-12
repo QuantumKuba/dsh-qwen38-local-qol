@@ -9,7 +9,7 @@
  * the checkpoint instead of burning it on thinking.
  *
  * Mounted as a service row in the generated user preset
- * (`~/.dsh/.agent-presets/qwen38-qol/agent.cordis.yml`, via
+ * (`~/.dsh/.agent-presets/qwen38/agent.cordis.yml`, via
  * {@link dsh-qwen38-local-qol/setup}), inside the preset's isolated compaction
  * group. The row config is the stock `BasicCompactionConfig`; the only
  * recommended row value is `maxTokens: 24576` (the stock 8192 default

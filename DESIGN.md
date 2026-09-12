@@ -67,7 +67,7 @@ profile（其 tui profile）有效。
 ```
 
 ```yaml
-# compaction backend 行 → 用户 preset 缝（~/.dsh/.agent-presets/qwen38-qol/agent.cordis.yml）
+# compaction backend 行 → 用户 preset 缝（~/.dsh/.agent-presets/qwen38/agent.cordis.yml）
 # 由 setup 脚本从【当前安装的】standard preset 生成（抄全量 + compaction 组内
 # compaction-basic 行替换为我们的 backend 行）→ 跟版无手工漂移
 - id: compaction
@@ -88,7 +88,7 @@ profile（其 tui profile）有效。
 
 - `package.json` 带 `dsh.bundle.patch: ./cordis.patch.yml` → `dsh plugin add
   github:Yunado/dsh-qwen38-local-qol` 挂 provider 行；`npx dsh-qwen38-local-qol-setup`
-  生成用户 preset（幂等 + 备份，dsh-dcp setup 同款）；GUI 选 `qwen38-qol` preset。
+  生成用户 preset（幂等 + 备份，dsh-dcp setup 同款）；GUI 选 `qwen38` preset。
 - 离线验证 = `dsh --profile web --patch <yml> --dump-config`（root 层行落位已验：
   dump 538 行基线 provenance 全对；preset 层 = M1 headless boot 验证）。
 - **M1 待核**：preset 目录的插件名解析（向上 node_modules 走查到不到

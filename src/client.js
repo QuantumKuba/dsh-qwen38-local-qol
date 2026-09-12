@@ -31,7 +31,7 @@ import { Button, Input, StateDot, Switch } from '@deepseek-ai/dsh-client-ui-prim
 const NS = 'qwen38-local-qol'
 
 /** The generated preset id (mirrors the host's `PRESET_ID`). */
-const PRESET_ID = 'qwen38-qol'
+const PRESET_ID = 'qwen38'
 
 const COPY = {
   en: {
@@ -63,10 +63,10 @@ const COPY = {
     conflict: 'Someone else changed these settings while you were editing. Your edits were discarded; the current values are shown.',
     invalidNumber: 'Every number field must be a positive whole number.',
     remoteError: 'Settings request failed: ',
-    compactionNotSet: 'Local compaction is not set up — the trim controls below apply once the qwen38-qol preset is generated (one-time setup, see the plugin README).',
-    compactionActive: 'Local compaction is active for new sessions (default preset: qwen38-qol).',
-    compactionAvailable: 'Local compaction is available, but the default preset is "{default}" — new sessions use standard compaction. Select qwen38-qol on the Agent presets page to enable it.',
-    compactionHint: 'The trim controls apply to sessions using the qwen38-qol preset.',
+    compactionNotSet: 'Local compaction is not set up — the trim controls below apply once the qwen38 preset is generated (one-time setup, see the plugin README).',
+    compactionActive: 'Local compaction is active for new sessions (default preset: qwen38).',
+    compactionAvailable: 'Local compaction is available, but the default preset is "{default}" — new sessions use standard compaction. Select qwen38 on the Agent presets page to enable it.',
+    compactionHint: 'The trim controls apply to sessions using the qwen38 preset.',
   },
   zh: {
     title: 'Qwen3.8 本地',
@@ -97,10 +97,10 @@ const COPY = {
     conflict: '编辑期间他人修改了这些设置。你的改动已丢弃，当前显示的是最新值。',
     invalidNumber: '所有数字字段必须是正整数。',
     remoteError: '设置请求失败：',
-    compactionNotSet: '本地压缩未启用——生成 qwen38-qol 预设（一次性 setup，见插件 README）后，下方裁剪设置才会生效。',
-    compactionActive: '本地压缩对新会话生效（默认预设：qwen38-qol）。',
-    compactionAvailable: '本地压缩可用，但默认预设是 "{default}"——新会话走标准压缩。在 Agent 预设页选择 qwen38-qol 启用。',
-    compactionHint: '裁剪设置仅对 qwen38-qol 预设的会话生效。',
+    compactionNotSet: '本地压缩未启用——生成 qwen38 预设（一次性 setup，见插件 README）后，下方裁剪设置才会生效。',
+    compactionActive: '本地压缩对新会话生效（默认预设：qwen38）。',
+    compactionAvailable: '本地压缩可用，但默认预设是 "{default}"——新会话走标准压缩。在 Agent 预设页选择 qwen38 启用。',
+    compactionHint: '裁剪设置仅对 qwen38 预设的会话生效。',
   },
 }
 
@@ -438,7 +438,7 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
       React.createElement('p', { className: 'qol-hint' }, ninfer ? t.thinkingHintNinfer : t.thinkingHintLlamacpp),
     ),
     // Compaction: the wiring status first (the trim controls only apply to
-    // sessions using the qwen38-qol preset), then the trim knobs.
+    // sessions using the qwen38 preset), then the trim knobs.
     React.createElement('section', { className: 'qol-group' },
       React.createElement('h3', { className: 'qol-groupHead' }, t.compaction),
       React.createElement('div', { className: 'qol-statusRow' },

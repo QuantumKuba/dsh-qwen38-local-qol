@@ -12,8 +12,8 @@ dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
 
 Restart `dsh web` — the compaction wiring self-applies at boot:
 
-- the **`qwen38-qol`** user preset is generated from the standard preset's composition, and the default agent preset is set only when none is configured yet (an explicit choice is respected on every later boot);
-- new sessions use `qwen38-qol` automatically; existing sessions keep the preset they were created with — select `qwen38-qol` in the GUI to switch one, or remove the `agent-presets:` section from `~/.dsh/settings.yaml` to keep `standard`.
+- the **`qwen38`** user preset is generated from the standard preset's composition, and the default agent preset is set only when none is configured yet (an explicit choice is respected on every later boot);
+- new sessions use `qwen38` automatically; existing sessions keep the preset they were created with — select `qwen38` in the GUI to switch one, or remove the `agent-presets:` section from `~/.dsh/settings.yaml` to keep `standard`.
 
 `setup.js` performs the same write manually (regenerates the preset from the live installed standard, forces the default, dated backups of every file it changes):
 
@@ -38,7 +38,7 @@ DSH settings → **Qwen3.8 Local** (web surface):
 | ![llama.cpp line](docs/screenshot-llama-en.png) | ![NInfer line](docs/screenshot-ninfer-en.png) |
 
 - **Line selector + per-line memory.** Each line keeps its own connection (`baseURL`/`model`/`displayName`), window numbers (`contextWindow`/`maxTokens`/`thinkingBudgets`), budgets (`defaultThinkingBudget` on the NInfer line) and trim knobs. The context window is a property of the **line** (its server build, constrained by VRAM/quant), not of the model — two lines of the same model can legitimately differ, so per-line memory is what keeps them from clobbering each other; switching lines swaps the two memories.
-- **Compaction wiring status dot.** Green: preset present and is the default (compaction live for new sessions). Amber: preset present but a different preset is the default (switch it on the Agent presets page). Gray: preset missing (regenerated at next boot, or run `setup.js`). The trim knobs apply to sessions on the `qwen38-qol` preset; the wire rules (compaction thinking-off + output cap) are always on for every qwen38 session, independent of the preset.
+- **Compaction wiring status dot.** Green: preset present and is the default (compaction live for new sessions). Amber: preset present but a different preset is the default (switch it on the Agent presets page). Gray: preset missing (regenerated at next boot, or run `setup.js`). The trim knobs apply to sessions on the `qwen38` preset; the wire rules (compaction thinking-off + output cap) are always on for every qwen38 session, independent of the preset.
 - **One-time defaults.** Window numbers (229376 / 24576 / 4096-8192-16384), trim knobs (strip / 5 / 2000) and both production connections are schema defaults — a fresh install pre-fills the whole form; type only what differs.
 - **Changes apply live, no restart** (the adapter reads the resolved value per request; the compaction backend re-reads per summarize); only model-catalog fields (`contextWindow` / `maxTokens` / `displayName`) need a new chat session.
 - **Persistence** = `settings.yaml` (hot-reloaded); writes carry the namespace version — a stale write surfaces as a conflict (re-read), never a silent clobber.
@@ -85,8 +85,8 @@ If the profile lockfile still pins the commit first installed (`github:` depende
 ## Uninstall
 
 1. `dsh plugin --profile web remove dsh-qwen38-local-qol` (removes the dependency).
-2. Delete the **`qwen38-qol`** agent preset on the DSH settings → Agent presets page.
-3. In `~/.dsh/settings.yaml`, drop `agent-presets: { default: qwen38-qol }` — required, since a default pointing at a deleted preset breaks resolution (if you ran `setup.js`, dated `.bak` backups remain).
+2. Delete the **`qwen38`** agent preset on the DSH settings → Agent presets page.
+3. In `~/.dsh/settings.yaml`, drop `agent-presets: { default: qwen38 }` — required, since a default pointing at a deleted preset breaks resolution (if you ran `setup.js`, dated `.bak` backups remain).
 4. Restart DSH (plugin code loads at host boot).
 
 Optional: drop the `qwen38-local-qol:` settings section and the `DSH_QWEN38_*` env vars you set.
@@ -125,8 +125,8 @@ dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
 
 重启 `dsh web` 即生效——压缩接线在启动时自动生效：
 
-- 从 standard preset 的组成生成 **`qwen38-qol`** 用户 preset，且仅当尚未配置默认 agent preset 时才设默认（显式选择之后每次启动都尊重）；
-- 新会话自动使用 `qwen38-qol`；已有会话保留创建时的 preset——在 GUI 里选择 `qwen38-qol` 切换单个会话，或从 `~/.dsh/settings.yaml` 删掉 `agent-presets:` 段保持 `standard` 为默认。
+- 从 standard preset 的组成生成 **`qwen38`** 用户 preset，且仅当尚未配置默认 agent preset 时才设默认（显式选择之后每次启动都尊重）；
+- 新会话自动使用 `qwen38`；已有会话保留创建时的 preset——在 GUI 里选择 `qwen38` 切换单个会话，或从 `~/.dsh/settings.yaml` 删掉 `agent-presets:` 段保持 `standard` 为默认。
 
 `setup.js` 手动执行同样的写入（从已安装的 standard 重新生成 preset、强制设默认、改动的文件留日期备份）：
 
@@ -151,7 +151,7 @@ DSH 设置 → **Qwen3.8 本地**（web 面）：
 | ![llama.cpp 线](docs/screenshot-llama-zh.png) | ![NInfer 线](docs/screenshot-ninfer-zh.png) |
 
 - **服务器线切换 + 按线记忆。** 每条线记住自己的连接（`baseURL`/`model`/`displayName`）、窗口数字（`contextWindow`/`maxTokens`/`thinkingBudgets`）、thinking 预算（NInfer 线的 `defaultThinkingBudget`）与裁剪旋钮。上下文窗口是**线**（其服务器构建，受 VRAM 与量化约束）的属性，不是模型的属性——同模型两条线可以合理地不同窗口，逐线记忆才不会互相污染；切线 = 两条记忆互换。
-- **压缩接线状态圆点。** 绿：preset 存在且为默认（新会话压缩生效）。黄：preset 存在但默认是别的 preset（在 Agent 预设页切换）。灰：preset 缺失（下次启动重新生成，或跑 `setup.js`）。裁剪旋钮只对使用 `qwen38-qol` preset 的会话生效；wire 层规则（压缩 thinking off + 输出帽）对所有 qwen38 会话常开、与 preset 无关。
+- **压缩接线状态圆点。** 绿：preset 存在且为默认（新会话压缩生效）。黄：preset 存在但默认是别的 preset（在 Agent 预设页切换）。灰：preset 缺失（下次启动重新生成，或跑 `setup.js`）。裁剪旋钮只对使用 `qwen38` preset 的会话生效；wire 层规则（压缩 thinking off + 输出帽）对所有 qwen38 会话常开、与 preset 无关。
 - **填一次默认值。** 窗口数字（229376 / 24576 / 4096-8192-16384）、裁剪旋钮（strip / 5 / 2000）、两条线的生产连接都是 schema 默认——新安装整表预填，只需填与默认不同的字段。
 - **生效即时、免重启**（adapter 每请求读解析值、压缩后端每次 summarize 读）；仅模型目录字段（`contextWindow`/`maxTokens`/`displayName`）需要开新会话。
 - **持久化** = `settings.yaml`（热加载）；写路径携带命名空间版本号，过期写入表现为冲突（重读），绝不静默覆盖。
@@ -198,8 +198,8 @@ dsh plugin --profile web update dsh-qwen38-local-qol
 ## 卸载
 
 1. `dsh plugin --profile web remove dsh-qwen38-local-qol`（移除依赖）。
-2. 在 DSH 设置 → Agent 预设页删除 **`qwen38-qol`** 用户 preset。
-3. `~/.dsh/settings.yaml` 删掉 `agent-presets: { default: qwen38-qol }`——必须删，默认项指向已删除的 preset 会让解析报错（跑过 `setup.js` 的话留有日期 `.bak` 备份）。
+2. 在 DSH 设置 → Agent 预设页删除 **`qwen38`** 用户 preset。
+3. `~/.dsh/settings.yaml` 删掉 `agent-presets: { default: qwen38 }`——必须删，默认项指向已删除的 preset 会让解析报错（跑过 `setup.js` 的话留有日期 `.bak` 备份）。
 4. 重启 DSH（插件代码在 host 启动时加载）。
 
 可选：删 `qwen38-local-qol:` 设置节、你设置过的 `DSH_QWEN38_*` 环境变量。

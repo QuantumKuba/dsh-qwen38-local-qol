@@ -234,15 +234,15 @@ test('apply: auto-applies the compaction preset at boot, before the status snaps
     // The preset is generated at boot (the env source wins the resolution
     // order), the default is set (none was configured), and the section base
     // reports the post-apply status.
-    const presetFile = join(home, '.agent-presets', 'qwen38-qol', 'agent.cordis.yml')
+    const presetFile = join(home, '.agent-presets', 'qwen38', 'agent.cordis.yml')
     assert.ok(existsSync(presetFile))
     const written = readFileSync(presetFile, 'utf8')
     assert.ok(written.includes('dsh-qwen38-local-qol/backend'))
     assert.ok(written.includes('maxTokens: 24576'))
     assert.equal(base.compaction.presetGenerated, true)
-    assert.equal(base.compaction.defaultPreset, 'qwen38-qol')
+    assert.equal(base.compaction.defaultPreset, 'qwen38')
     const settingsText = readFileSync(join(home, 'settings.yaml'), 'utf8')
-    assert.ok(settingsText.includes('default: qwen38-qol'))
+    assert.ok(settingsText.includes('default: qwen38'))
   } finally {
     if (realHome === undefined) delete process.env.DSH_HOME
     else process.env.DSH_HOME = realHome

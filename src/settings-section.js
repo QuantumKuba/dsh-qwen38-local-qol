@@ -103,7 +103,7 @@ export function sectionSchema() {
     }),
     // The compaction wiring status the tab renders (the host reads it at boot
     // into the section base): the trim controls apply only to sessions using
-    // the qwen38-qol preset, so the tab states which preset new sessions take.
+    // the qwen38 preset, so the tab states which preset new sessions take.
     compaction: Schema.object({
       presetGenerated: Schema.boolean().default(false),
       defaultPreset: Schema.string().default('standard'),

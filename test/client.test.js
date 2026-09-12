@@ -27,7 +27,7 @@ function fakeCtx(overrides = {}) {
         thinkingLevelMap: {},
         includeUsage: true,
         summarize: { images: 'strip', keepTurns: 5, toolChars: 2000 },
-        compaction: { presetGenerated: true, defaultPreset: 'qwen38-qol' },
+        compaction: { presetGenerated: true, defaultPreset: 'qwen38' },
       },
     }, {
       ns: 'agent-presets',
@@ -76,14 +76,14 @@ test('compactionStatusCopy: the three wiring states', () => {
   }
   assert.equal(client.compactionStatusCopy(undefined, t), 'not-set')
   assert.equal(client.compactionStatusCopy({ presetGenerated: false, defaultPreset: 'standard' }, t), 'not-set')
-  assert.equal(client.compactionStatusCopy({ presetGenerated: true, defaultPreset: 'qwen38-qol' }, t), 'active')
+  assert.equal(client.compactionStatusCopy({ presetGenerated: true, defaultPreset: 'qwen38' }, t), 'active')
   assert.equal(client.compactionStatusCopy({ presetGenerated: true, defaultPreset: 'standard' }, t), 'available: standard')
 })
 
 test('compactionStatusState: done active, warning available, idle not set up', () => {
   assert.equal(client.compactionStatusState(undefined), 'idle')
   assert.equal(client.compactionStatusState({ presetGenerated: false, defaultPreset: 'standard' }), 'idle')
-  assert.equal(client.compactionStatusState({ presetGenerated: true, defaultPreset: 'qwen38-qol' }), 'done')
+  assert.equal(client.compactionStatusState({ presetGenerated: true, defaultPreset: 'qwen38' }), 'done')
   assert.equal(client.compactionStatusState({ presetGenerated: true, defaultPreset: 'standard' }), 'warning')
 })
 
