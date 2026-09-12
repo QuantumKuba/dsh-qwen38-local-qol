@@ -8,8 +8,8 @@ import { resolveConfig, DEFAULT_BASE_URL, DEFAULT_MODEL, DEFAULT_LLAMA_MODEL, DE
 test('resolveConfig: built-in defaults open on the general default (llama.cpp line)', () => {
   const resolved = resolveConfig({}, {})
   assert.equal(resolved.baseURL, DEFAULT_BASE_URL)
-  // The model default follows the dialect: the default dialect (llama.cpp)
-  // pre-fills the GGUF basename; the NInfer dialect pre-fills its artifact id.
+  // The model default follows the dialect: both lines currently share the
+  // neutral line name (no quant suffix).
   assert.equal(resolved.model, DEFAULT_LLAMA_MODEL)
   assert.equal(resolveConfig({ dialect: 'ninfer' }, {}).model, DEFAULT_MODEL)
   assert.equal(resolved.apiKey, undefined)
