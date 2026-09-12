@@ -6,8 +6,12 @@
  * @module dsh-qwen38-local-qol/config
  */
 
-/** Where the production NInfer 0.5.0 server listens, plus its OpenAI path prefix. */
-export const DEFAULT_BASE_URL = 'http://localhost:8082/v1'
+/**
+ * NInfer line default server address when nothing configures one: the
+ * standard local llama port, shared with the llama.cpp line's default (a
+ * different port goes in the baseURL field or the DSH_QWEN38_BASE_URL env).
+ */
+export const DEFAULT_BASE_URL = 'http://localhost:8080/v1'
 
 /**
  * NInfer line model id when nothing configures one: the neutral line name,
@@ -16,7 +20,10 @@ export const DEFAULT_BASE_URL = 'http://localhost:8082/v1'
  */
 export const DEFAULT_MODEL = 'qwen3.8-27b'
 
-/** Where the standby llama.cpp line listens (the production 8080 bat). */
+/**
+ * llama.cpp line default server address when nothing configures one: the
+ * standard llama-server port (the same address as the NInfer line's default).
+ */
 export const DEFAULT_LLAMA_BASE_URL = 'http://localhost:8080/v1'
 
 /**
@@ -129,7 +136,9 @@ export function resolveConfig(config = {}, env = process.env) {
   }
 
   return {
-    baseURL: setting(config.baseURL, env.DSH_QWEN38_BASE_URL, DEFAULT_BASE_URL),
+    // The base-url default follows the dialect (both lines currently share
+    // the standard llama-server port).
+    baseURL: setting(config.baseURL, env.DSH_QWEN38_BASE_URL, dialect === DIALECT_NINFER ? DEFAULT_BASE_URL : DEFAULT_LLAMA_BASE_URL),
     // The model default follows the dialect (both lines currently share the
     // neutral line name, no quant suffix).
     model: setting(config.model, env.DSH_QWEN38_MODEL, dialect === DIALECT_NINFER ? DEFAULT_MODEL : DEFAULT_LLAMA_MODEL),

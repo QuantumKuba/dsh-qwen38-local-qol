@@ -77,7 +77,7 @@ function lineSchema(baseURL, model, contextWindow, maxTokens, budgets) {
 export function sectionSchema() {
   return Schema.object({
     dialect: Schema.string().default(DIALECT_LLAMACPP),
-    baseURL: Schema.string().default(DEFAULT_BASE_URL),
+    baseURL: Schema.string().default(DEFAULT_LLAMA_BASE_URL),
     model: Schema.string().default(DEFAULT_LLAMA_MODEL),
     displayName: Schema.string().default(''),
     lines: Schema.object({

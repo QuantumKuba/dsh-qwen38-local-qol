@@ -24,7 +24,7 @@ test('sectionSchema: a fully-default value opens on the general default (llama.c
   const schema = sectionSchema()
   const resolved = schema({})
   assert.equal(resolved.dialect, 'llamacpp')
-  assert.equal(resolved.baseURL, DEFAULT_BASE_URL)
+  assert.equal(resolved.baseURL, DEFAULT_LLAMA_BASE_URL)
   assert.equal(resolved.model, DEFAULT_LLAMA_MODEL)
   assert.equal(resolved.displayName, '')
   assert.equal(resolved.apiKey, '')

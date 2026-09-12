@@ -3,11 +3,14 @@
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveConfig, DEFAULT_BASE_URL, DEFAULT_MODEL, DEFAULT_LLAMA_MODEL, DEFAULT_THINKING_BUDGETS } from '../src/config.js'
+import { resolveConfig, DEFAULT_BASE_URL, DEFAULT_LLAMA_BASE_URL, DEFAULT_MODEL, DEFAULT_LLAMA_MODEL, DEFAULT_THINKING_BUDGETS } from '../src/config.js'
 
 test('resolveConfig: built-in defaults open on the general default (llama.cpp line)', () => {
   const resolved = resolveConfig({}, {})
-  assert.equal(resolved.baseURL, DEFAULT_BASE_URL)
+  // The base-url default follows the dialect: both lines currently share the
+  // standard llama-server port.
+  assert.equal(resolved.baseURL, DEFAULT_LLAMA_BASE_URL)
+  assert.equal(resolveConfig({ dialect: 'ninfer' }, {}).baseURL, DEFAULT_BASE_URL)
   // The model default follows the dialect: both lines currently share the
   // neutral line name (no quant suffix).
   assert.equal(resolved.model, DEFAULT_LLAMA_MODEL)
@@ -42,7 +45,7 @@ test('resolveConfig: patch row beats environment, environment beats default', ()
 
 test('resolveConfig: empty strings count as unset; llamacpp default includeUsage', () => {
   const resolved = resolveConfig({ baseURL: '   ', dialect: 'llamacpp' }, {})
-  assert.equal(resolved.baseURL, DEFAULT_BASE_URL)
+  assert.equal(resolved.baseURL, DEFAULT_LLAMA_BASE_URL)
   assert.equal(resolved.includeUsage, true)
 })
 

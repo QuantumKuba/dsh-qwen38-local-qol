@@ -34,7 +34,7 @@ The settings tab is the primary entry; headless profiles and patch/env accept th
 
 | Area | Fields (env vars) | Defaults |
 |---|---|---|
-| Server | `baseURL`, `model`, `displayName`, `apiKey` (`DSH_QWEN38_BASE_URL` / `_MODEL` / `_DISPLAY_NAME` / `_API_KEY`) | `http://localhost:8082/v1`, `qwen3.8-27b`, same as `model`, none |
+| Server | `baseURL`, `model`, `displayName`, `apiKey` (`DSH_QWEN38_BASE_URL` / `_MODEL` / `_DISPLAY_NAME` / `_API_KEY`) | `http://localhost:8080/v1`, `qwen3.8-27b`, same as `model`, none |
 | Dialect | `dialect` (`DSH_QWEN38_DIALECT`) | `llamacpp` |
 | Window | `contextWindow`, `maxTokens` (`DSH_QWEN38_CONTEXT_WINDOW` / `_MAX_TOKENS`) | `229376`, `24576` |
 | Thinking | `thinkingBudgets` (llamacpp, per effort), `defaultThinkingBudget` (ninfer, global), `defaultEffort` (`DSH_QWEN38_DEFAULT_EFFORT`) | `{ low: 4096, medium: 8192, xhigh: 16384 }`, `16384`, `medium` |
@@ -111,7 +111,7 @@ DSH 设置 → **Qwen3.8 本地**：
 
 | 区域 | 字段（环境变量） | 默认 |
 |---|---|---|
-| 服务器 | `baseURL`、`model`、`displayName`、`apiKey`（`DSH_QWEN38_BASE_URL` / `_MODEL` / `_DISPLAY_NAME` / `_API_KEY`） | `http://localhost:8082/v1`、`qwen3.8-27b`、同 `model`、无 |
+| 服务器 | `baseURL`、`model`、`displayName`、`apiKey`（`DSH_QWEN38_BASE_URL` / `_MODEL` / `_DISPLAY_NAME` / `_API_KEY`） | `http://localhost:8080/v1`、`qwen3.8-27b`、同 `model`、无 |
 | 方言 | `dialect`（`DSH_QWEN38_DIALECT`） | `llamacpp` |
 | 窗口 | `contextWindow`、`maxTokens`（`DSH_QWEN38_CONTEXT_WINDOW` / `_MAX_TOKENS`） | `229376`、`24576` |
 | Thinking | `thinkingBudgets`（llamacpp，按 effort）、`defaultThinkingBudget`（ninfer，全局）、`defaultEffort`（`DSH_QWEN38_DEFAULT_EFFORT`） | `{ low: 4096, medium: 8192, xhigh: 16384 }`、`16384`、`medium` |
