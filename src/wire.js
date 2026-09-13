@@ -401,6 +401,8 @@ export function createSseParser() {
 export function createChunkTranslator() {
   /** @type {Map<number, { type: string, text?: string, id?: string, name?: string, args?: string }>} */
   const blocks = new Map()
+  /** @type {Map<number, number>} tool-call delta index (call.index) -> block index */
+  const toolBlocks = new Map()
   let nextIndex = 0
   let usage
   let finishReason
@@ -457,10 +459,18 @@ export function createChunkTranslator() {
 
       if (Array.isArray(delta?.tool_calls)) {
         for (const call of delta.tool_calls) {
-          const id = call.id ?? ''
-          const index = ensure('tool-call', id)
+          // Key on call.index, not id: llama.cpp omits id/name on continuation
+          // argument frames (empty fields are dropped at serialization), so
+          // id-based lookup would split one call into an empty-named block
+          // (harness discussion 2343 class: unknown tool "").
+          const toolIndex = Number.isInteger(call.index) ? call.index : 0
+          let index = toolBlocks.get(toolIndex)
+          if (index === undefined) {
+            index = open('tool-call')
+            toolBlocks.set(toolIndex, index)
+          }
           const block = blocks.get(index)
-          block.id = block.id ?? id
+          if (call.id) block.id = block.id ?? call.id
           if (call.function?.name) block.name = call.function.name
           if (!block.seen) {
             chunks.push({ type: 'block-start', index, blockType: 'tool-call' })

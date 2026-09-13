@@ -245,6 +245,23 @@ test('translator: interleaved reasoning, text, tool call — stable indexes, usa
   assert.deepEqual(chunks.at(-1), { type: 'finish', reason: { kind: 'tool-calls' } })
 })
 
+test('translator: llama.cpp wire (continuation frames omit id/name) stays one block', () => {
+  const translator = createChunkTranslator()
+  const chunks = [
+    ...translator.accept({ choices: [{ delta: { tool_calls: [{ index: 0, id: 'c1', type: 'function', function: { name: 'read' } }] } }] }),
+    ...translator.accept({ choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '{"p":' } }] } }] }),
+    ...translator.accept({ choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '"a"}' } }] } }] }),
+    ...translator.accept({ choices: [{ delta: { tool_calls: [{ index: 1, id: 'c2', type: 'function', function: { name: 'write' } }] } }] }),
+    ...translator.accept({ choices: [{ delta: { tool_calls: [{ index: 1, function: { arguments: '{"f":' } }] } }] }),
+    ...translator.accept({ choices: [{ delta: {}, finish_reason: 'tool_calls' }], usage: { prompt_tokens: 1, completion_tokens: 2 } }),
+    ...translator.end(),
+  ]
+  const ends = chunks.filter((c) => c.type === 'block-end').map((c) => c.block)
+  assert.equal(ends.length, 2)
+  assert.deepEqual(ends[0], { type: 'tool-call', id: 'c1', name: 'read', arguments: '{"p":"a"}' })
+  assert.deepEqual(ends[1], { type: 'tool-call', id: 'c2', name: 'write', arguments: '{"f":' })
+})
+
 test('translator: reasoning tokens count into output usage when the server reports them', () => {
   const translator = createChunkTranslator()
   const chunks = [
