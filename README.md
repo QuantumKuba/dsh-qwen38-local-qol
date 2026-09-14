@@ -4,7 +4,7 @@
 
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
-A QoL plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) for running **Qwen3.8 locally** (llama.cpp `llama-server` or NInfer — both serve the OpenAI-compatible `/v1` API; at the config level also **Qwen3.8-Flash-Next**). No core patches, no pi-ai patchfile.
+A QoL plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) for running **Qwen3.8 locally** (llama.cpp `llama-server`, NInfer, or TabbyAPI — the ExLlamaV3 backend server; all serve the OpenAI-compatible `/v1` API; at the config level also **Qwen3.8-Flash-Next**). No core patches, no pi-ai patchfile.
 
 ## Install
 
@@ -18,7 +18,7 @@ Restart `dsh web`: at boot the plugin generates the **`qwen38`** user preset fro
 
 ## What it supports
 
-- **Per-request thinking budgets.** The llama.cpp line sends the selected per-effort budget on every request (`reasoning_effort` + `reasoning_budget_tokens` — overrides the server's `--reasoning-budget`); the NInfer line has one global budget for all efforts (`defaultThinkingBudget` → the server's `--default-thinking-budget`).
+- **Per-request thinking budgets.** The llama.cpp line sends the selected per-effort budget on every request (`reasoning_effort` + `reasoning_budget_tokens` — overrides the server's `--reasoning-budget`); the NInfer line has one global budget for all efforts (`defaultThinkingBudget` → the server's `--default-thinking-budget`); the TabbyAPI line accepts both natively, so per-effort budgets ride every request.
 - **A compaction backend.** The summarizer's prefill is trimmed (recent reasoning only, images downgraded to text placeholders, tool results capped), and compaction calls run thinking-off at the line's full output cap — checkpoints stop getting truncated at the token cap.
 - **A settings tab** that configures both lines, live.
 
@@ -37,14 +37,15 @@ The settings tab is the primary entry; headless profiles and patch/env accept th
 | Area | Fields (env vars) | Defaults |
 |---|---|---|
 | Server | `baseURL`, `model`, `displayName`, `apiKey` (`DSH_QWEN38_BASE_URL` / `_MODEL` / `_DISPLAY_NAME` / `_API_KEY`) | `http://localhost:8080/v1`, `qwen3.8-27b`, same as `model`, none |
-| Dialect | `dialect` (`DSH_QWEN38_DIALECT`) | `llamacpp` |
+| Dialect | `dialect` (`DSH_QWEN38_DIALECT`) | `llamacpp` (options: `ninfer`, `tabbyapi`) |
 | Window | `contextWindow`, `maxTokens` (`DSH_QWEN38_CONTEXT_WINDOW` / `_MAX_TOKENS`) | `229376`, `24576` |
-| Thinking | `thinkingBudgets` (llamacpp, per effort), `defaultThinkingBudget` (ninfer, global), `defaultEffort` (`DSH_QWEN38_DEFAULT_EFFORT`) | `{ low: 4096, medium: 8192, xhigh: 16384 }`, `16384`, `medium` |
+| Thinking | `thinkingBudgets` (llamacpp + tabbyapi, per effort), `defaultThinkingBudget` (ninfer, global), `defaultEffort` (`DSH_QWEN38_DEFAULT_EFFORT`) | `{ low: 4096, medium: 8192, xhigh: 16384 }`, `16384`, `medium` |
 | Prefill trim | `DSH_QWEN38_SUMMARIZE_IMAGES`, `DSH_QWEN38_SUMMARIZE_KEEP_TURNS`, `DSH_QWEN38_SUMMARIZE_TOOL_CHARS` (env only) | `strip`, `5`, `2000` |
 
 ## Limitations
 
-- **Flash-Next is config-compatible, not artifact-verified** (NInfer ships 27B NVFP4 only so far) — it runs the llama.cpp dialect with its own window/budget values.
+- **Flash-Next has a fast line and a compat line** — the ExLlamaV3/TabbyAPI dialect (EXL3 quant, 256K context) is the fast path; the llama.cpp dialect still runs it at its own window/budget values.
+- **The TabbyAPI line's vision token count is not pinned** — the token meter reports image capacity as unknown on that line until the ExLlamaV3 image-processor formula is measured (the request itself works; only the pre-flight capacity projection is affected).
 - **The preset seam is a web-surface feature** — headless profiles do not mount `agent-presets` rows; the provider route (thinking budgets) works on both surfaces.
 - **Summarizer internals depend on the engine version** — the wire rules (thinking off, full output cap) hold for every engine version; engine internals are outside the plugin's control.
 
@@ -81,7 +82,7 @@ Host half = plain ESM JavaScript with JSDoc; the browser half is built by `scrip
 
 ## 中文
 
-给**本地跑 Qwen3.8** 的人用的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）QoL 插件（llama.cpp `llama-server` 或 NInfer——两者都提供 OpenAI 兼容 `/v1` API；配置层面兼容 **Qwen3.8-Flash-Next**）。零核心补丁、零 pi-ai 补丁文件。
+给**本地跑 Qwen3.8** 的人用的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）QoL 插件（llama.cpp `llama-server`、NInfer 或 TabbyAPI——ExLlamaV3 后端服务器；均提供 OpenAI 兼容 `/v1` API；配置层面兼容 **Qwen3.8-Flash-Next**）。零核心补丁、零 pi-ai 补丁文件。
 
 ## 安装
 
@@ -95,9 +96,9 @@ dsh plugin --profile web add github:Yunado/dsh-qwen38-local-qol
 
 ## 功能特性
 
-- **逐请求 thinking 预算。** llama.cpp 线每请求发送所选 effort 的预算（`reasoning_effort` + `reasoning_budget_tokens`——覆盖服务端 `--reasoning-budget`）；NInfer 线全部 effort 共用一个全局预算（`defaultThinkingBudget` → 服务端 `--default-thinking-budget`）。
+- **逐请求 thinking 预算。** llama.cpp 线每请求发送所选 effort 的预算（`reasoning_effort` + `reasoning_budget_tokens`——覆盖服务端 `--reasoning-budget`）；NInfer 线全部 effort 共用一个全局预算（`defaultThinkingBudget` → 服务端 `--default-thinking-budget`）；TabbyAPI 线两者都原生接受，逐请求按档发送。
 - **压缩（compaction）后端。** 摘要 prefill 先裁剪（只留近 N 轮 reasoning、图片降为文本占位符、工具结果按字数帽截断），且压缩调用强制 thinking off + 该线完整输出帽——checkpoint 不再被 token 帽截断。
-- **设置 tab**：图形化配置两条线，即时生效。
+- **设置 tab**：图形化配置各线，即时生效。
 
 ## 设置 tab
 
@@ -114,14 +115,15 @@ DSH 设置 → **Qwen3.8 本地**：
 | 区域 | 字段（环境变量） | 默认 |
 |---|---|---|
 | 服务器 | `baseURL`、`model`、`displayName`、`apiKey`（`DSH_QWEN38_BASE_URL` / `_MODEL` / `_DISPLAY_NAME` / `_API_KEY`） | `http://localhost:8080/v1`、`qwen3.8-27b`、同 `model`、无 |
-| 方言 | `dialect`（`DSH_QWEN38_DIALECT`） | `llamacpp` |
+| 方言 | `dialect`（`DSH_QWEN38_DIALECT`） | `llamacpp`（可选：`ninfer`、`tabbyapi`） |
 | 窗口 | `contextWindow`、`maxTokens`（`DSH_QWEN38_CONTEXT_WINDOW` / `_MAX_TOKENS`） | `229376`、`24576` |
-| Thinking | `thinkingBudgets`（llamacpp，按 effort）、`defaultThinkingBudget`（ninfer，全局）、`defaultEffort`（`DSH_QWEN38_DEFAULT_EFFORT`） | `{ low: 4096, medium: 8192, xhigh: 16384 }`、`16384`、`medium` |
+| Thinking | `thinkingBudgets`（llamacpp + tabbyapi，按 effort）、`defaultThinkingBudget`（ninfer，全局）、`defaultEffort`（`DSH_QWEN38_DEFAULT_EFFORT`） | `{ low: 4096, medium: 8192, xhigh: 16384 }`、`16384`、`medium` |
 | Prefill 裁剪 | `DSH_QWEN38_SUMMARIZE_IMAGES`、`DSH_QWEN38_SUMMARIZE_KEEP_TURNS`、`DSH_QWEN38_SUMMARIZE_TOOL_CHARS`（仅环境变量） | `strip`、`5`、`2000` |
 
 ## 已知限制
 
-- **Flash-Next 是配置兼容，未工件验证**（NInfer 尚只出 27B NVFP4）——跑在 llama.cpp 方言，用自己的窗口/预算值。
+- **Flash-Next 有快线与兼容线**——ExLlamaV3/TabbyAPI 方言（EXL3 量化、256K 上下文）是快线；llama.cpp 方言仍可按自己的窗口/预算值跑它。
+- **TabbyAPI 线的视觉 token 数未钉**——该线上 token meter 报图片容量未知，直到测出 ExLlamaV3 图像处理器公式（请求本身正常，只影响预检容量投影）。
 - **preset 接缝是 web 面功能**——headless profile 不挂 `agent-presets` 行；provider 路由（thinking 预算）两面都工作。
 - **摘要器内部行为依赖引擎版本**——wire 层规则（thinking off、完整输出帽）对所有引擎版本生效；引擎内部行为不在本插件控制之内。
 

@@ -29,6 +29,12 @@ const LLAMACPP = {
   thinkingLevelMap: { xhigh: 'high' },
   includeUsage: true,
 }
+const TABBYAPI = {
+  dialect: 'tabbyapi',
+  thinkingBudgets: { low: 4096, medium: 8192, xhigh: 16384 },
+  thinkingLevelMap: {},
+  includeUsage: false,
+}
 
 test('chatCompletionsUrl: never doubles the /v1 prefix', () => {
   assert.equal(chatCompletionsUrl('http://h:8080/v1'), 'http://h:8080/v1/chat/completions')
@@ -49,6 +55,18 @@ test('buildQwenBody: ninfer dialect — effort top-level, kwargs only enable_thi
   assert.ok(!('stream_options' in body))
 })
 
+test('buildQwenBody: tabbyapi dialect — ninfer wire natively (effort top-level, budget per request)', () => {
+  const body = buildQwenBody(
+    { model: 'Qwen3.8-Flash-Next-4.05bpw', reasoningEffort: 'xhigh', maxTokens: 57344, messages: [] },
+    'Qwen3.8-Flash-Next-4.05bpw',
+    TABBYAPI,
+  )
+  assert.equal(body.reasoning_effort, 'xhigh')
+  assert.deepEqual(body.chat_template_kwargs, { enable_thinking: true })
+  assert.equal(body.reasoning_budget_tokens, 16384)
+  assert.equal(body.max_tokens, 57344)
+})
+
 test('buildQwenBody: llamacpp dialect — effort in kwargs, level map applied, budget top-level', () => {
   const body = buildQwenBody(
     { model: 'qwen', reasoningEffort: 'xhigh', messages: [] },
@@ -61,8 +79,8 @@ test('buildQwenBody: llamacpp dialect — effort in kwargs, level map applied, b
   assert.deepEqual(body.stream_options, { include_usage: true })
 })
 
-test('buildQwenBody: off — enable_thinking false, no effort, no budget (both dialects)', () => {
-  for (const config of [NINFER, LLAMACPP]) {
+test('buildQwenBody: off — enable_thinking false, no effort, no budget (all dialects)', () => {
+  for (const config of [NINFER, LLAMACPP, TABBYAPI]) {
     const body = buildQwenBody({ model: 'qwen', reasoningEffort: 'off', messages: [] }, 'qwen', config)
     assert.deepEqual(body.chat_template_kwargs, { enable_thinking: false })
     assert.ok(!('reasoning_effort' in body))
@@ -76,8 +94,8 @@ test('buildQwenBody: absent effort — thinking off, no budget', () => {
   assert.ok(!('reasoning_budget_tokens' in body))
 })
 
-test('buildQwenBody: auxiliary purpose forces thinking off despite a set effort (both dialects)', () => {
-  for (const config of [NINFER, LLAMACPP]) {
+test('buildQwenBody: auxiliary purpose forces thinking off despite a set effort (all dialects)', () => {
+  for (const config of [NINFER, LLAMACPP, TABBYAPI]) {
     const body = buildQwenBody(
       { model: 'qwen', reasoningEffort: 'medium', purpose: 'compaction', maxTokens: 24576, messages: [] },
       'qwen',

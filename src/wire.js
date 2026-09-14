@@ -1,9 +1,10 @@
 /**
  * Pure translation between the harness request/stream vocabulary and the
- * OpenAI-compatible wire format the local Qwen3.8 line speaks (llama-server
- * and NInfer serve, both `/v1/chat/completions`), plus the Qwen thinking
- * dialect: `chat_template_kwargs.enable_thinking` / `reasoning_effort`
- * placement and the per-request `reasoning_budget_tokens` hard cap.
+ * OpenAI-compatible wire format the local Qwen3.8 lines speak (llama-server,
+ * NInfer serve, and TabbyAPI — the ExLlamaV3 backend server — all
+ * `/v1/chat/completions`), plus the Qwen thinking dialect:
+ * `chat_template_kwargs.enable_thinking` / `reasoning_effort` placement and
+ * the per-request `reasoning_budget_tokens` hard cap.
  *
  * Nothing here does I/O, so every mapping decision is directly testable.
  *
@@ -213,18 +214,34 @@ export function toOpenAiTools(tools) {
 }
 
 /**
+ * The dialects whose servers read the thinking effort from the top-level
+ * `reasoning_effort` body field (NInfer's kwargs whitelist rejects the
+ * template variable; TabbyAPI lists the top-level `reasoning_effort` field
+ * as a first-class request parameter alongside `chat_template_kwargs`).
+ * @param dialect - the resolved server dialect.
+ * @returns true when the effort rides top-level.
+ */
+export function usesTopLevelEffort(dialect) {
+  return dialect === 'ninfer' || dialect === 'tabbyapi'
+}
+
+/**
  * Build the streaming chat-completion request body for the Qwen3.8 local
  * line, applying the thinking dialect of the configured server:
  *
- * - both dialects: `chat_template_kwargs.enable_thinking` carries the
+ * - all dialects: `chat_template_kwargs.enable_thinking` carries the
  *   per-request thinking toggle (this llama.cpp build reads the toggle only
- *   from `chat_template_kwargs`; NInfer accepts it in its kwargs whitelist).
- * - `ninfer`: effort travels as the top-level `reasoning_effort` body field
- *   (its kwargs whitelist rejects any other key).
+ *   from `chat_template_kwargs`; NInfer accepts it in its kwargs whitelist;
+ *   TabbyAPI maps it onto the chat template variable of the same name).
+ * - `ninfer` and `tabbyapi`: effort travels as the top-level `reasoning_effort`
+ *   body field (NInfer's kwargs whitelist rejects any other key; TabbyAPI
+ *   accepts the field natively and lets it take precedence over template
+ *   variables).
  * - `llamacpp`: effort travels as `chat_template_kwargs.reasoning_effort`
  *   (froggeric v22.1 template) and the selected level's hard thinking budget
  *   as the top-level `reasoning_budget_tokens` (per-request value overrides
- *   any `--reasoning-budget` CLI flag).
+ *   any `--reasoning-budget` CLI flag). TabbyAPI reads the same
+ *   `reasoning_budget_tokens` field natively.
  *
  * `maxTokens` maps to `max_tokens`: the local servers do not read
  * `max_completion_tokens`. Compaction calls (`purpose: 'compaction'`) take
@@ -269,7 +286,7 @@ export function buildQwenBody(options, fallbackModel, config, imageDataUrls) {
   const kwargs = { enable_thinking: thinkingOn }
   if (thinkingOn) {
     const wireEffort = config.thinkingLevelMap?.[effort] ?? effort
-    if (config.dialect === 'ninfer') {
+    if (usesTopLevelEffort(config.dialect)) {
       body.reasoning_effort = wireEffort
     } else {
       kwargs.reasoning_effort = wireEffort

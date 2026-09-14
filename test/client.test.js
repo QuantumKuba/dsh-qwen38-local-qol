@@ -165,11 +165,13 @@ test('toDraft: a fresh section (no user layer) ships the production defaults pre
   // Legacy shape (no user.lines): the active line migrates from the top level.
   assert.equal(draft.baseURL, 'http://localhost:8082/v1')
   assert.equal(draft.model, 'qwen3.8-27b-nvfp4')
-  assert.equal(draft.parkedBaseURL, '')
-  // The parked line's numbers start at the production defaults.
-  assert.equal(draft.parkedContextWindow, '229376')
-  assert.equal(draft.parkedMaxTokens, '24576')
-  assert.equal(draft.parkedXhigh, '16384')
+  // The other lines park at their built-in defaults.
+  assert.equal(draft.lines.llamacpp.baseURL, '')
+  assert.equal(draft.lines.llamacpp.contextWindow, '229376')
+  assert.equal(draft.lines.tabbyapi.baseURL, '')
+  assert.equal(draft.lines.tabbyapi.contextWindow, '262144')
+  assert.equal(draft.lines.tabbyapi.maxTokens, '57344')
+  assert.equal(draft.lines.ninfer.xhigh, '16384')
 })
 
 test('toDraft: a new-shape section reads the active line from lines and parks the other', () => {
@@ -201,14 +203,40 @@ test('toDraft: a new-shape section reads the active line from lines and parks th
   assert.equal(draft.keepTurns, '5')
   assert.equal(draft.toolChars, '2000')
   // The parked NInfer line keeps its own numbers.
-  assert.equal(draft.parkedBaseURL, 'http://localhost:8082/v1')
-  assert.equal(draft.parkedModel, 'qwen3.8-27b-nvfp4')
-  assert.equal(draft.parkedDisplayName, 'N')
-  assert.equal(draft.parkedContextWindow, '229376')
-  assert.equal(draft.parkedMaxTokens, '24576')
-  assert.equal(draft.parkedXhigh, '16384')
-  assert.equal(draft.parkedDefaultBudget, '8192')
-  assert.equal(draft.parkedImages, 'keep')
-  assert.equal(draft.parkedKeepTurns, '3')
-  assert.equal(draft.parkedToolChars, '1000')
+  assert.equal(draft.lines.ninfer.baseURL, 'http://localhost:8082/v1')
+  assert.equal(draft.lines.ninfer.model, 'qwen3.8-27b-nvfp4')
+  assert.equal(draft.lines.ninfer.displayName, 'N')
+  assert.equal(draft.lines.ninfer.contextWindow, '229376')
+  assert.equal(draft.lines.ninfer.maxTokens, '24576')
+  assert.equal(draft.lines.ninfer.xhigh, '16384')
+  assert.equal(draft.lines.ninfer.defaultThinkingBudget, '8192')
+  assert.equal(draft.lines.ninfer.images, 'keep')
+  assert.equal(draft.lines.ninfer.keepTurns, '3')
+  assert.equal(draft.lines.ninfer.toolChars, '1000')
+  // The unpersisted TabbyAPI line parks at its built-in 256K defaults.
+  assert.equal(draft.lines.tabbyapi.baseURL, '')
+  assert.equal(draft.lines.tabbyapi.contextWindow, '262144')
+  assert.equal(draft.lines.tabbyapi.maxTokens, '57344')
+})
+
+test('toDraft: a tabbyapi-active section lifts the ExLlamaV3 line onto the inputs', () => {
+  const value = {
+    dialect: 'tabbyapi',
+    baseURL: 'http://localhost:8083/v1',
+    model: 'Qwen3.8-Flash-Next-4.05bpw',
+    user: { lines: { tabbyapi: {} } },
+    lines: {
+      tabbyapi: { baseURL: 'http://localhost:8083/v1', model: 'Qwen3.8-Flash-Next-4.05bpw', displayName: 'F', contextWindow: 262144, maxTokens: 57344, thinkingBudgets: { low: 4096, medium: 8192, xhigh: 16384 } },
+    },
+  }
+  const draft = client.toDraft(value)
+  assert.equal(draft.dialect, 'tabbyapi')
+  assert.equal(draft.baseURL, 'http://localhost:8083/v1')
+  assert.equal(draft.model, 'Qwen3.8-Flash-Next-4.05bpw')
+  assert.equal(draft.displayName, 'F')
+  assert.equal(draft.contextWindow, '262144')
+  assert.equal(draft.maxTokens, '57344')
+  // The other lines park at their built-in defaults.
+  assert.equal(draft.lines.ninfer.baseURL, '')
+  assert.equal(draft.lines.llamacpp.baseURL, '')
 })

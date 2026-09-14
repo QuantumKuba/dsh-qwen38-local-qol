@@ -19,8 +19,8 @@
  * and the primitives package left external — the module table supplies both
  * identities) into the DSH client-module format — a self-registering classic
  * script — committed as `lib/client.js`. The dialect selector is the headline
- * control — it switches the thinking wire (NInfer vs llama-server) for every
- * request the plugin route serves.
+ * control — it switches the server line (llama-server vs NInfer vs TabbyAPI,
+ * the ExLlamaV3 backend) for every request the plugin route serves.
  *
  * @module dsh-qwen38-local-qol/client
  */
@@ -39,6 +39,7 @@ const COPY = {
     line: 'Server line',
     dialectNinfer: 'NInfer',
     dialectLlamacpp: 'llama.cpp',
+    dialectTabbyapi: 'TabbyAPI',
     connection: 'Connection',
     baseURL: 'Server base URL',
     model: 'Model id',
@@ -50,6 +51,7 @@ const COPY = {
     thinkingAll: 'All efforts',
     thinkingHintNinfer: 'Per-effort thinking budgets are not supported on NInfer (ninfer as of 2026-09-02; ninfer-windows 0.5.0).',
     thinkingHintLlamacpp: 'Thinking hard cap, sent per request per selected level (overrides the server\'s --reasoning-budget flag).',
+    thinkingHintTabbyapi: 'Thinking hard cap, sent per request per selected level (TabbyAPI native reasoning_budget_tokens).',
     compaction: 'Compaction prefill trim',
     summarizeImages: 'Images in the summarizer prefill',
     summarizeHint: 'Off strips images in the summarizer prefill to text placeholders (prefer with mmproj offload).',
@@ -73,6 +75,7 @@ const COPY = {
     line: '服务器线',
     dialectNinfer: 'NInfer',
     dialectLlamacpp: 'llama.cpp',
+    dialectTabbyapi: 'TabbyAPI',
     connection: '连接',
     baseURL: '服务器地址',
     model: '模型 id',
@@ -84,6 +87,7 @@ const COPY = {
     thinkingAll: '全部 effort',
     thinkingHintNinfer: 'NInfer 不支持按 effort 的 thinking 预算（ninfer as of 2026-09-02；ninfer-windows 0.5.0）。',
     thinkingHintLlamacpp: 'thinking 硬帽，逐请求按所选档发送（覆盖服务端 --reasoning-budget）。',
+    thinkingHintTabbyapi: 'thinking 硬帽，逐请求按所选档发送（TabbyAPI 原生 reasoning_budget_tokens）。',
     compaction: '压缩预填充裁剪',
     summarizeImages: '摘要预填充里的图片',
     summarizeHint: '关闭 = 摘要预填充里的图片替换为文本占位符（mmproj offload 时优选）。',
@@ -151,14 +155,55 @@ function digitsOnly(setValue) {
 }
 
 /**
+ * The built-in window defaults per line, mirroring `resolveConfig`: every
+ * 224K line (llama.cpp, NInfer) opens on 229376/24576; the ExLlamaV3 line
+ * (TabbyAPI) opens on its 256K context and its narrow-band output cap.
+ */
+const LINE_WINDOW_DEFAULTS = Object.freeze({
+  ninfer: { contextWindow: 229376, maxTokens: 24576 },
+  llamacpp: { contextWindow: 229376, maxTokens: 24576 },
+  tabbyapi: { contextWindow: 262144, maxTokens: 57344 },
+})
+
+/**
+ * Read one line's editable record. `fallback` is the section's top-level
+ * values, passed only for the active line of a legacy write (the top level
+ * belongs to that line), layered under the persisted line over the built-in
+ * defaults.
+ * @param name - the dialect the record belongs to.
+ * @param raw - the persisted line record, when the section carries one.
+ * @param fallback - the legacy top-level values, or undefined.
+ * @returns the flat record for the tab's inputs.
+ */
+function lineRecord(name, raw, fallback) {
+  const d = LINE_WINDOW_DEFAULTS[name]
+  const src = { contextWindow: d.contextWindow, maxTokens: d.maxTokens, ...(fallback ?? {}), ...(raw ?? {}) }
+  return {
+    baseURL: src.baseURL ?? '',
+    model: src.model ?? '',
+    displayName: src.displayName ?? '',
+    contextWindow: String(src.contextWindow ?? d.contextWindow),
+    maxTokens: String(src.maxTokens ?? d.maxTokens),
+    low: String(src.thinkingBudgets?.low ?? 4096),
+    medium: String(src.thinkingBudgets?.medium ?? 8192),
+    xhigh: String(src.thinkingBudgets?.xhigh ?? 16384),
+    defaultThinkingBudget: String(src.defaultThinkingBudget ?? 16384),
+    images: src.summarize?.images ?? 'strip',
+    keepTurns: String(src.summarize?.keepTurns ?? 5),
+    toolChars: String(src.summarize?.toolChars ?? 2000),
+  }
+}
+
+/**
  * Pull the editable draft out of a namespace view's resolved value.
  *
- * The connection fields are per-dialect (`lines`): the draft carries the
- * active line (baseURL/model/displayName) plus the parked other line, and the
- * dialect control swaps the two. Sections saved before `lines` existed carry
- * the connection only at the top level — detect that from the user layer and
- * migrate the top level into the active line instead of showing the schema
- * defaults on top of the user's saved values.
+ * The connection fields are per-dialect (`lines`): the draft lifts the active
+ * line into the flat inputs and parks EVERY line under `lines`, so the
+ * dialect control swaps the active line from the parked records and each
+ * line remembers its own values across switches. Sections saved before
+ * `lines` existed carry the values only at the top level — detect that from
+ * the user layer and migrate the top level into the active line instead of
+ * showing the schema defaults on top of the user's saved values.
  *
  * The numeric fields fall back to the production line's values so a fresh
  * install (no user layer) is fill-once: only the connection fields may be
@@ -166,44 +211,28 @@ function digitsOnly(setValue) {
  */
 export function toDraft(value) {
   const dialect = value.dialect
-  const other = dialect === 'ninfer' ? 'llamacpp' : 'ninfer'
   const legacy = (value.user ?? {}).lines === undefined
-  const line = (name) => {
-    const raw = value.lines?.[name]
-    return {
-      baseURL: raw?.baseURL ?? '',
-      model: raw?.model ?? '',
-      displayName: raw?.displayName ?? '',
-      contextWindow: String(raw?.contextWindow ?? value.contextWindow ?? 229376),
-      maxTokens: String(raw?.maxTokens ?? value.maxTokens ?? 24576),
-      low: String(raw?.thinkingBudgets?.low ?? value.thinkingBudgets?.low ?? 4096),
-      medium: String(raw?.thinkingBudgets?.medium ?? value.thinkingBudgets?.medium ?? 8192),
-      xhigh: String(raw?.thinkingBudgets?.xhigh ?? value.thinkingBudgets?.xhigh ?? 16384),
-      defaultThinkingBudget: String(raw?.defaultThinkingBudget ?? value.defaultThinkingBudget ?? 16384),
-      images: raw?.summarize?.images ?? value.summarize?.images ?? 'strip',
-      keepTurns: String(raw?.summarize?.keepTurns ?? value.summarize?.keepTurns ?? 5),
-      toolChars: String(raw?.summarize?.toolChars ?? value.summarize?.toolChars ?? 2000),
-    }
+  const legacyTop = legacy ? {
+    baseURL: value.baseURL,
+    model: value.model,
+    displayName: value.displayName,
+    contextWindow: value.contextWindow,
+    maxTokens: value.maxTokens,
+    thinkingBudgets: value.thinkingBudgets,
+    defaultThinkingBudget: value.defaultThinkingBudget,
+    summarize: value.summarize,
+  } : undefined
+  // The legacy top level belongs to the active line only; the other lines
+  // park at their built-in defaults.
+  const lines = {
+    ninfer: lineRecord('ninfer', value.lines?.ninfer, dialect === 'ninfer' ? legacyTop : undefined),
+    llamacpp: lineRecord('llamacpp', value.lines?.llamacpp, dialect === 'llamacpp' ? legacyTop : undefined),
+    tabbyapi: lineRecord('tabbyapi', value.lines?.tabbyapi, dialect === 'tabbyapi' ? legacyTop : undefined),
   }
-  const active = legacy
-    ? {
-      baseURL: value.baseURL ?? '',
-      model: value.model ?? '',
-      displayName: value.displayName ?? '',
-      contextWindow: String(value.contextWindow ?? 229376),
-      maxTokens: String(value.maxTokens ?? 24576),
-      low: String(value.thinkingBudgets?.low ?? 4096),
-      medium: String(value.thinkingBudgets?.medium ?? 8192),
-      xhigh: String(value.thinkingBudgets?.xhigh ?? 16384),
-      defaultThinkingBudget: String(value.defaultThinkingBudget ?? 16384),
-      images: value.summarize?.images ?? 'strip',
-      keepTurns: String(value.summarize?.keepTurns ?? 5),
-      toolChars: String(value.summarize?.toolChars ?? 2000),
-    }
-    : line(dialect)
-  const parked = line(other)
+  const active = lines[dialect]
   return {
     dialect,
+    lines,
     baseURL: active.baseURL,
     model: active.model,
     displayName: active.displayName,
@@ -212,22 +241,28 @@ export function toDraft(value) {
     low: active.low,
     medium: active.medium,
     xhigh: active.xhigh,
-    parkedBaseURL: parked.baseURL,
-    parkedModel: parked.model,
-    parkedDisplayName: parked.displayName,
-    parkedContextWindow: parked.contextWindow,
-    parkedMaxTokens: parked.maxTokens,
-    parkedLow: parked.low,
-    parkedMedium: parked.medium,
-    parkedXhigh: parked.xhigh,
     defaultBudget: active.defaultThinkingBudget,
     images: active.images,
     keepTurns: active.keepTurns,
     toolChars: active.toolChars,
-    parkedDefaultBudget: parked.defaultThinkingBudget,
-    parkedImages: parked.images,
-    parkedKeepTurns: parked.keepTurns,
-    parkedToolChars: parked.toolChars,
+  }
+}
+
+/** Lift one parked line record onto the flat draft inputs. */
+function liftedInputs(record) {
+  return {
+    baseURL: record.baseURL,
+    model: record.model,
+    displayName: record.displayName,
+    contextWindow: record.contextWindow,
+    maxTokens: record.maxTokens,
+    low: record.low,
+    medium: record.medium,
+    xhigh: record.xhigh,
+    defaultBudget: record.defaultThinkingBudget,
+    images: record.images,
+    keepTurns: record.keepTurns,
+    toolChars: record.toolChars,
   }
 }
 
@@ -239,9 +274,8 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
 
   const setDraft = (patch) => setState((s) => ({ ...s, draft: s.draft === null ? s.draft : { ...s.draft, ...patch }, saved: false }))
 
-  // Switching the server line: the active connection fields and the parked
-  // (other dialect's) fields trade places, so each line remembers its own
-  // baseURL/model/displayName across switches and back.
+  // Switching the server line: the flat inputs take the target line's parked
+  // record, so each line remembers its own values across switches and back.
   const switchDialect = (next) => {
     setState((s) => {
       if (s.draft === null || s.draft.dialect === next) return s
@@ -249,34 +283,7 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
       return {
         ...s,
         saved: false,
-        draft: {
-          ...d,
-          dialect: next,
-          baseURL: d.parkedBaseURL,
-          model: d.parkedModel,
-          displayName: d.parkedDisplayName,
-          contextWindow: d.parkedContextWindow,
-          maxTokens: d.parkedMaxTokens,
-          low: d.parkedLow,
-          medium: d.parkedMedium,
-          xhigh: d.parkedXhigh,
-          parkedBaseURL: d.baseURL,
-          parkedModel: d.model,
-          parkedDisplayName: d.displayName,
-          parkedContextWindow: d.contextWindow,
-          parkedMaxTokens: d.maxTokens,
-          parkedLow: d.low,
-          parkedMedium: d.medium,
-          parkedXhigh: d.xhigh,
-          defaultBudget: d.parkedDefaultBudget,
-          images: d.parkedImages,
-          keepTurns: d.parkedKeepTurns,
-          toolChars: d.parkedToolChars,
-          parkedDefaultBudget: d.defaultBudget,
-          parkedImages: d.images,
-          parkedKeepTurns: d.keepTurns,
-          parkedToolChars: d.toolChars,
-        },
+        draft: { ...d, dialect: next, ...liftedInputs(d.lines[next]) },
       }
     })
   }
@@ -299,9 +306,8 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
     const { view, draft } = state
     const numbers = [
       draft.contextWindow, draft.maxTokens, draft.low, draft.medium, draft.xhigh,
-      draft.parkedContextWindow, draft.parkedMaxTokens, draft.parkedLow, draft.parkedMedium, draft.parkedXhigh,
       draft.defaultBudget, draft.keepTurns, draft.toolChars,
-      draft.parkedDefaultBudget, draft.parkedKeepTurns, draft.parkedToolChars,
+      ...Object.values(draft.lines).flatMap((line) => [line.contextWindow, line.maxTokens, line.low, line.medium, line.xhigh, line.defaultThinkingBudget, line.keepTurns, line.toolChars]),
     ]
     if (numbers.some((text) => /^\d+$/.test(String(text)) === false || Number.parseInt(text, 10) <= 0)) {
       setState((s) => ({ ...s, error: t.invalidNumber }))
@@ -309,37 +315,55 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
     }
     setState((s) => ({ ...s, busy: true, error: null }))
     // The top-level fields are what the adapter and the compaction backend
-    // read (the active line); `lines` persists both lines — connection, window
+    // read (the active line); `lines` persists every line — connection, window
     // numbers, the thinking budget, AND the trim knobs (the context window is a
     // property of the line's server build, not the model) — so switching
     // dialect and back restores each one's values.
-    const otherDialect = draft.dialect === 'ninfer' ? 'llamacpp' : 'ninfer'
-    const lineBlock = (baseURL, model, displayName, contextWindow, maxTokens, low, medium, xhigh, defaultBudget, images, keepTurns, toolChars) => ({
-      baseURL,
-      model,
-      displayName,
-      contextWindow: Number.parseInt(contextWindow, 10),
-      maxTokens: Number.parseInt(maxTokens, 10),
+    const lineBlock = (record) => ({
+      baseURL: record.baseURL,
+      model: record.model,
+      displayName: record.displayName,
+      contextWindow: Number.parseInt(record.contextWindow, 10),
+      maxTokens: Number.parseInt(record.maxTokens, 10),
       thinkingBudgets: {
-        low: Number.parseInt(low, 10),
-        medium: Number.parseInt(medium, 10),
-        xhigh: Number.parseInt(xhigh, 10),
+        low: Number.parseInt(record.low, 10),
+        medium: Number.parseInt(record.medium, 10),
+        xhigh: Number.parseInt(record.xhigh, 10),
       },
-      defaultThinkingBudget: Number.parseInt(defaultBudget, 10),
+      defaultThinkingBudget: Number.parseInt(record.defaultThinkingBudget, 10),
       summarize: {
-        images,
-        keepTurns: Number.parseInt(keepTurns, 10),
-        toolChars: Number.parseInt(toolChars, 10),
+        images: record.images,
+        keepTurns: Number.parseInt(record.keepTurns, 10),
+        toolChars: Number.parseInt(record.toolChars, 10),
       },
     })
+    // The active line's persisted record is the parked record with the flat
+    // inputs re-applied (the user edits ride the flat fields, not the record).
+    const activeRecord = {
+      ...draft.lines[draft.dialect],
+      baseURL: draft.baseURL,
+      model: draft.model,
+      displayName: draft.displayName,
+      contextWindow: draft.contextWindow,
+      maxTokens: draft.maxTokens,
+      low: draft.low,
+      medium: draft.medium,
+      xhigh: draft.xhigh,
+      defaultThinkingBudget: draft.defaultBudget,
+      images: draft.images,
+      keepTurns: draft.keepTurns,
+      toolChars: draft.toolChars,
+    }
+    const persistedLines = { ...draft.lines, [draft.dialect]: activeRecord }
     const patch = {
       dialect: draft.dialect,
       baseURL: draft.baseURL,
       model: draft.model,
       displayName: draft.displayName,
       lines: {
-        [draft.dialect]: lineBlock(draft.baseURL, draft.model, draft.displayName, draft.contextWindow, draft.maxTokens, draft.low, draft.medium, draft.xhigh, draft.defaultBudget, draft.images, draft.keepTurns, draft.toolChars),
-        [otherDialect]: lineBlock(draft.parkedBaseURL, draft.parkedModel, draft.parkedDisplayName, draft.parkedContextWindow, draft.parkedMaxTokens, draft.parkedLow, draft.parkedMedium, draft.parkedXhigh, draft.parkedDefaultBudget, draft.parkedImages, draft.parkedKeepTurns, draft.parkedToolChars),
+        ninfer: lineBlock(persistedLines.ninfer),
+        llamacpp: lineBlock(persistedLines.llamacpp),
+        tabbyapi: lineBlock(persistedLines.tabbyapi),
       },
       contextWindow: Number.parseInt(draft.contextWindow, 10),
       maxTokens: Number.parseInt(draft.maxTokens, 10),
@@ -392,7 +416,7 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
     React.createElement('section', { className: 'qol-group' },
       React.createElement('h3', { className: 'qol-groupHead' }, t.line),
       React.createElement('div', { className: 'qol-radioRow' },
-        ['llamacpp', 'ninfer'].map((dialect) =>
+        ['llamacpp', 'ninfer', 'tabbyapi'].map((dialect) =>
           React.createElement('label', { key: dialect, className: 'qol-radio' },
             React.createElement('input', {
               type: 'radio',
@@ -400,7 +424,7 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
               checked: draft.dialect === dialect,
               onChange: () => { switchDialect(dialect) },
             }),
-            dialect === 'ninfer' ? t.dialectNinfer : t.dialectLlamacpp,
+            dialect === 'ninfer' ? t.dialectNinfer : dialect === 'tabbyapi' ? t.dialectTabbyapi : t.dialectLlamacpp,
           ),
         ),
       ),
@@ -435,7 +459,7 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
             React.createElement(Input, { className: 'qol-input', inputMode: 'numeric', disabled: ninfer, value: draft[effort], onChange: digitsOnly((v) => { setDraft({ [effort]: v }) }) })),
         ),
       ),
-      React.createElement('p', { className: 'qol-hint' }, ninfer ? t.thinkingHintNinfer : t.thinkingHintLlamacpp),
+      React.createElement('p', { className: 'qol-hint' }, ninfer ? t.thinkingHintNinfer : draft.dialect === 'tabbyapi' ? t.thinkingHintTabbyapi : t.thinkingHintLlamacpp),
     ),
     // Compaction: the wiring status first (the trim controls only apply to
     // sessions using the qwen38 preset), then the trim knobs.

@@ -60,7 +60,7 @@ export class QwenLocalAdapter extends LlmAdapter {
    * @param config.model - model id to send when a request omits one.
    * @param config.displayName - selector name shown in the GUI; falls back to the model id.
    * @param config.apiKey - optional server `--api-key` credential.
-   * @param config.dialect - `ninfer` or `llamacpp`; selects the thinking wire.
+   * @param config.dialect - `ninfer`, `llamacpp`, or `tabbyapi`; selects the thinking wire.
    * @param config.contextWindow - declared context capacity for pressure compaction.
    * @param config.maxTokens - declared per-request output cap.
    * @param config.thinkingBudgets - per-effort hard thinking budgets.
@@ -171,14 +171,20 @@ export class QwenLocalAdapter extends LlmAdapter {
    * class predates the seam, so the adapter supplies the method. Every local
    * Qwen line is vision-capable: the NInfer line prices with its exact patch
    * formula; the llama.cpp line is clamped server-side, so the clamp maximum
-   * is the conservative estimate. The data-URL wire carries no model-visible
-   * text for a priced image, so the priced text is empty.
+   * is the conservative estimate; the TabbyAPI line (ExLlamaV3) prices its
+   * vision tokens through the model's image processor, which the wire does
+   * not pin — until that count is measured, the capacity is reported unknown
+   * (the meter then leaves image capacity out of the projection). The
+   * data-URL wire carries no model-visible text for a priced image, so the
+   * priced text is empty.
    * @param provider - a registered provider route.
    * @param model - the exact model id.
-   * @returns one synchronous price per request image occurrence.
+   * @returns one synchronous price per request image occurrence, or undefined where the capacity is unknown.
    */
   imageRequestPricing(_provider, _model) {
-    const llamacpp = this.#config.dialect === 'llamacpp'
+    const dialect = this.#config.dialect
+    if (dialect === 'tabbyapi') return undefined
+    const llamacpp = dialect === 'llamacpp'
     return {
       priceImages: (images) => images.map((ref) => llamacpp
         ? { visualTokens: LLMACPP_IMAGE_TOKEN_CAP, text: '' }

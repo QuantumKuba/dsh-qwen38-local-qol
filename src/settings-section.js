@@ -8,7 +8,8 @@
  *
  * Schema defaults mirror `resolveConfig`'s built-ins so a namespace read
  * without any user or base layer opens on the general default (the
- * llama.cpp line; NInfer is the per-line memory under `lines.ninfer`). `thinkingBudgets`
+ * llama.cpp line; NInfer and TabbyAPI are the per-line memory under
+ * `lines.ninfer` / `lines.tabbyapi`). `thinkingBudgets`
  * keys and `defaultEffort` are cross-validated (the schema cannot express
  * "effort id must be a declared budget key").
  *
@@ -16,6 +17,7 @@
  */
 import Schema from '@deepseek-ai/schemastery'
 import {
+  DIALECTS,
   DIALECT_LLAMACPP,
   DIALECT_NINFER,
   DEFAULT_BASE_URL,
@@ -24,6 +26,10 @@ import {
   DEFAULT_LLAMA_MODEL,
   DEFAULT_MAX_TOKENS,
   DEFAULT_MODEL,
+  DEFAULT_TABBYAPI_BASE_URL,
+  DEFAULT_TABBYAPI_CONTEXT_WINDOW,
+  DEFAULT_TABBYAPI_MAX_TOKENS,
+  DEFAULT_TABBYAPI_MODEL,
   DEFAULT_THINKING_BUDGETS,
 } from './config.js'
 import { DEFAULT_TRIM_KNOBS } from './prepare.js'
@@ -32,7 +38,7 @@ import { DEFAULT_TRIM_KNOBS } from './prepare.js'
 export const NS = 'qwen38-local-qol'
 
 /**
- * The per-dialect line block. Each server line (NInfer, llama.cpp) remembers
+ * The per-dialect line block. Each server line (llama.cpp, NInfer, TabbyAPI) remembers
  * its own connection (`baseURL`/`model`/`displayName`) and its own window
  * numbers (`contextWindow`/`maxTokens`/`thinkingBudgets`): the context window
  * is a property of the line's server build (its `-c`, bounded by that line's
@@ -83,6 +89,7 @@ export function sectionSchema() {
     lines: Schema.object({
       ninfer: lineSchema(DEFAULT_BASE_URL, DEFAULT_MODEL, DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_TOKENS, DEFAULT_THINKING_BUDGETS),
       llamacpp: lineSchema(DEFAULT_LLAMA_BASE_URL, DEFAULT_LLAMA_MODEL, DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_TOKENS, DEFAULT_THINKING_BUDGETS),
+      tabbyapi: lineSchema(DEFAULT_TABBYAPI_BASE_URL, DEFAULT_TABBYAPI_MODEL, DEFAULT_TABBYAPI_CONTEXT_WINDOW, DEFAULT_TABBYAPI_MAX_TOKENS, DEFAULT_THINKING_BUDGETS),
     }),
     apiKey: Schema.string().default(''),
     contextWindow: Schema.number().default(DEFAULT_CONTEXT_WINDOW),
@@ -119,8 +126,8 @@ export function sectionSchema() {
  * @throws {Error} when a field combination the adapter cannot serve.
  */
 export function validateSection(value) {
-  if (value.dialect !== DIALECT_NINFER && value.dialect !== DIALECT_LLAMACPP) {
-    throw new Error(`dsh-qwen38-local-qol: dialect must be "${DIALECT_NINFER}" or "${DIALECT_LLAMACPP}", got "${value.dialect}"`)
+  if (DIALECTS.includes(value.dialect) === false) {
+    throw new Error(`dsh-qwen38-local-qol: dialect must be one of ${DIALECTS.map((d) => `"${d}"`).join(', ')}, got "${value.dialect}"`)
   }
   const budgets = value.thinkingBudgets ?? {}
   for (const [effort, budgetTokens] of Object.entries(budgets)) {

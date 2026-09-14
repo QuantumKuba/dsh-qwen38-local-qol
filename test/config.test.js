@@ -74,6 +74,15 @@ test('resolveConfig: invalid dialect fails loud', () => {
   assert.throws(() => resolveConfig({ dialect: 'vllm' }, {}), /dialect must be/)
 })
 
+test('resolveConfig: the tabbyapi line opens on its own defaults', () => {
+  const resolved = resolveConfig({ dialect: 'tabbyapi' }, {})
+  assert.equal(resolved.dialect, 'tabbyapi')
+  assert.equal(resolved.baseURL, 'http://localhost:8083/v1')
+  assert.equal(resolved.model, 'Qwen3.8-Flash-Next-4.05bpw')
+  assert.equal(resolved.contextWindow, 262144)
+  assert.equal(resolved.maxTokens, 57344)
+})
+
 test('resolveConfig: budget map drops malformed entries, falls back when all drop', () => {
   // The default defaultEffort (medium) must be a declared effort, so the
   // partial-budget case names one explicitly; an all-drop map keeps the

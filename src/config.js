@@ -41,16 +41,36 @@ export const DEFAULT_PROVIDER = 'qwen38'
  * travels as the top-level `reasoning_effort` body field); `llamacpp` =
  * llama-server with the froggeric v22.1 jinja template (effort travels as
  * `chat_template_kwargs.reasoning_effort`, hard budget as
- * `reasoning_budget_tokens`).
+ * `reasoning_budget_tokens`); `tabbyapi` = TabbyAPI (the ExLlamaV3 backend
+ * server), which accepts the NInfer wire natively: top-level
+ * `reasoning_effort`, `chat_template_kwargs` template variables, and
+ * `reasoning_budget_tokens` are all first-class request fields.
  */
 export const DIALECT_NINFER = 'ninfer'
 export const DIALECT_LLAMACPP = 'llamacpp'
+export const DIALECT_TABBYAPI = 'tabbyapi'
+
+/**
+ * Every declared server dialect, in settings-tab order (the line selector
+ * iterates this list).
+ */
+export const DIALECTS = Object.freeze([DIALECT_LLAMACPP, DIALECT_NINFER, DIALECT_TABBYAPI])
 
 /** Context window of the production 224K line (229376). */
 export const DEFAULT_CONTEXT_WINDOW = 229376
 
 /** Output cap of the production line (229376 - 204800, the narrow-band floor). */
 export const DEFAULT_MAX_TOKENS = 24576
+
+/**
+ * TabbyAPI line defaults: the ExLlamaV3 server for Qwen3.8-Flash-Next 4.05bpw
+ * EXL3 (256K context, the EXL3 cache allocation). The output cap keeps the
+ * same narrow-band floor arithmetic (262144 - 204800).
+ */
+export const DEFAULT_TABBYAPI_BASE_URL = 'http://localhost:8083/v1'
+export const DEFAULT_TABBYAPI_MODEL = 'Qwen3.8-Flash-Next-4.05bpw'
+export const DEFAULT_TABBYAPI_CONTEXT_WINDOW = 262144
+export const DEFAULT_TABBYAPI_MAX_TOKENS = 57344
 
 /** Per-effort hard thinking budgets of the production line. */
 export const DEFAULT_THINKING_BUDGETS = Object.freeze({
@@ -120,15 +140,20 @@ function budgetMap(value, fallback) {
  */
 export function resolveConfig(config = {}, env = process.env) {
   const dialect = setting(config.dialect, env.DSH_QWEN38_DIALECT, DIALECT_LLAMACPP)
-  if (dialect !== DIALECT_NINFER && dialect !== DIALECT_LLAMACPP) {
-    throw new Error(`dsh-qwen38-local-qol: dialect must be "${DIALECT_NINFER}" or "${DIALECT_LLAMACPP}", got "${dialect}"`)
+  if (DIALECTS.includes(dialect) === false) {
+    throw new Error(`dsh-qwen38-local-qol: dialect must be one of ${DIALECTS.map((d) => `"${d}"`).join(', ')}, got "${dialect}"`)
   }
+  // The window defaults follow the dialect: each server line has its own
+  // context capacity (the 224K lines vs the 256K ExLlamaV3 line), and the
+  // output cap keeps the line's narrow-band floor arithmetic.
+  const contextWindowDefault = dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_CONTEXT_WINDOW : DEFAULT_CONTEXT_WINDOW
+  const maxTokensDefault = dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_MAX_TOKENS : DEFAULT_MAX_TOKENS
   const provider = Array.isArray(config.provider)
     ? config.provider.map((route) => String(route).trim()).filter((route) => route !== '')
     : [DEFAULT_PROVIDER]
 
-  const contextWindow = intSetting(config.contextWindow, env.DSH_QWEN38_CONTEXT_WINDOW, DEFAULT_CONTEXT_WINDOW)
-  const maxTokens = intSetting(config.maxTokens, env.DSH_QWEN38_MAX_TOKENS, DEFAULT_MAX_TOKENS)
+  const contextWindow = intSetting(config.contextWindow, env.DSH_QWEN38_CONTEXT_WINDOW, contextWindowDefault)
+  const maxTokens = intSetting(config.maxTokens, env.DSH_QWEN38_MAX_TOKENS, maxTokensDefault)
   const thinkingBudgets = budgetMap(config.thinkingBudgets, DEFAULT_THINKING_BUDGETS)
   const defaultEffort = setting(config.defaultEffort, env.DSH_QWEN38_DEFAULT_EFFORT, 'medium')
   if (defaultEffort !== 'off' && thinkingBudgets[defaultEffort] === undefined) {
@@ -136,12 +161,12 @@ export function resolveConfig(config = {}, env = process.env) {
   }
 
   return {
-    // The base-url default follows the dialect (both lines currently share
-    // the standard llama-server port).
-    baseURL: setting(config.baseURL, env.DSH_QWEN38_BASE_URL, dialect === DIALECT_NINFER ? DEFAULT_BASE_URL : DEFAULT_LLAMA_BASE_URL),
-    // The model default follows the dialect (both lines currently share the
-    // neutral line name, no quant suffix).
-    model: setting(config.model, env.DSH_QWEN38_MODEL, dialect === DIALECT_NINFER ? DEFAULT_MODEL : DEFAULT_LLAMA_MODEL),
+    // The base-url default follows the dialect (the 224K lines share the
+    // standard llama-server port; the ExLlamaV3 line has its own port).
+    baseURL: setting(config.baseURL, env.DSH_QWEN38_BASE_URL, dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_BASE_URL : dialect === DIALECT_NINFER ? DEFAULT_BASE_URL : DEFAULT_LLAMA_BASE_URL),
+    // The model default follows the dialect (the 224K lines share the neutral
+    // line name; the ExLlamaV3 line names its quantized artifact).
+    model: setting(config.model, env.DSH_QWEN38_MODEL, dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_MODEL : dialect === DIALECT_NINFER ? DEFAULT_MODEL : DEFAULT_LLAMA_MODEL),
     /**
      * Human-readable selector name for the model entry. The wire model id is
      * an artifact alias (e.g. the server's quantized file name); the display
