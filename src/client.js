@@ -49,7 +49,7 @@ const COPY = {
     maxTokens: 'Output cap (tokens)',
     thinking: 'Thinking budgets',
     thinkingAll: 'All efforts',
-    thinkingHintNinfer: 'Per-effort thinking budgets are not supported on NInfer (ninfer as of 2026-09-02; ninfer-windows 0.5.0).',
+    thinkingHintNinfer: 'NInfer reads its thinking budget at server startup (--default-thinking-budget); a per-request budget is not supported (ninfer as of 2026-09-14; ninfer-windows 0.7.1). Change the bat flag and restart the line.',
     thinkingHintLlamacpp: 'Thinking hard cap, sent per request per selected level (overrides the server\'s --reasoning-budget flag).',
     thinkingHintTabbyapi: 'Thinking hard cap, sent per request per selected level (TabbyAPI native reasoning_budget_tokens).',
     compaction: 'Compaction prefill trim',
@@ -85,7 +85,7 @@ const COPY = {
     maxTokens: '输出上限（token）',
     thinking: 'Thinking 预算',
     thinkingAll: '全部 effort',
-    thinkingHintNinfer: 'NInfer 不支持按 effort 的 thinking 预算（ninfer as of 2026-09-02；ninfer-windows 0.5.0）。',
+    thinkingHintNinfer: 'NInfer 的 thinking 预算在服务启动时设定（bat 的 --default-thinking-budget，不支持逐请求，ninfer as of 2026-09-14；ninfer-windows 0.7.1）。改 bat 后重启该线生效。',
     thinkingHintLlamacpp: 'thinking 硬帽，逐请求按所选档发送（覆盖服务端 --reasoning-budget）。',
     thinkingHintTabbyapi: 'thinking 硬帽，逐请求按所选档发送（TabbyAPI 原生 reasoning_budget_tokens）。',
     compaction: '压缩预填充裁剪',
@@ -449,10 +449,6 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
     ),
     React.createElement('section', { className: 'qol-group' },
       React.createElement('h3', { className: 'qol-groupHead' }, t.thinking),
-      ninfer
-        ? React.createElement(Field, { label: t.thinkingAll },
-          React.createElement(Input, { className: 'qol-input', inputMode: 'numeric', value: draft.defaultBudget, onChange: digitsOnly((v) => { setDraft({ defaultBudget: v }) }) }))
-        : null,
       React.createElement('div', { className: ninfer ? 'qol-row3 qol-muted' : 'qol-row3' },
         ['low', 'medium', 'xhigh'].map((effort) =>
           React.createElement(Field, { key: effort, label: effort },
