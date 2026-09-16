@@ -185,10 +185,24 @@ export class QwenLocalAdapter extends LlmAdapter {
     const dialect = this.#config.dialect
     if (dialect === 'tabbyapi') return undefined
     const llamacpp = dialect === 'llamacpp'
+    // The meter prices ImageBlocks ({ type:'image', attachment, offloaded? }):
+    // dimensions live on the durable attachment ref, never on the block.
+    // Offloaded occurrences ride as placeholder text (no visual tokens);
+    // a ref missing dimensions prices at a 1024x1024 guess rather than NaN,
+    // because a NaN price poisons the meter's walk-back (>= checks go false).
     return {
-      priceImages: (images) => images.map((ref) => llamacpp
-        ? { visualTokens: LLMACPP_IMAGE_TOKEN_CAP, text: '' }
-        : { visualTokens: ninferVisionTokens(ref.width, ref.height), text: '' }),
+      priceImages: (images) => images.map((ref) => {
+        if (ref.offloaded) return { visualTokens: 0, text: '' }
+        if (llamacpp) return { visualTokens: LLMACPP_IMAGE_TOKEN_CAP, text: '' }
+        const attachment = ref.attachment
+        return {
+          visualTokens: ninferVisionTokens(
+            attachment?.width ?? 1024,
+            attachment?.height ?? 1024,
+          ),
+          text: '',
+        }
+      }),
     }
   }
 

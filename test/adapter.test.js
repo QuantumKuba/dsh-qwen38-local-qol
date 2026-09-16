@@ -338,11 +338,13 @@ test('listModels: the display name separates the selector label from the wire id
 
 test('imageRequestPricing: the NInfer patch formula per occurrence, empty priced text', () => {
   const adapter = new QwenLocalAdapter(CONFIG)
+  // The meter prices durable ImageBlocks: dimensions live on the
+  // attachment ref, not on the block.
   const images = [
-    { attachmentId: 'a', mediaType: 'image/png', bytes: 10, width: 256, height: 256 },
-    { attachmentId: 'b', mediaType: 'image/png', bytes: 20, width: 1024, height: 1024 },
-    { attachmentId: 'c', mediaType: 'image/jpeg', bytes: 30, width: 2048, height: 1024 },
-    { attachmentId: 'd', mediaType: 'image/png', bytes: 40, width: 100, height: 50 },
+    { type: 'image', attachment: { attachmentId: 'a', mediaType: 'image/png', width: 256, height: 256 } },
+    { type: 'image', attachment: { attachmentId: 'b', mediaType: 'image/png', width: 1024, height: 1024 } },
+    { type: 'image', attachment: { attachmentId: 'c', mediaType: 'image/jpeg', width: 2048, height: 1024 } },
+    { type: 'image', attachment: { attachmentId: 'd', mediaType: 'image/png', width: 100, height: 50 } },
   ]
   const prices = adapter.imageRequestPricing('qwen38', 'qwen').priceImages(images)
   assert.deepEqual(
@@ -352,11 +354,24 @@ test('imageRequestPricing: the NInfer patch formula per occurrence, empty priced
   assert.ok(prices.every((price) => price.text === ''))
 })
 
+test('imageRequestPricing: offloaded occurrences cost no visual tokens; missing dimensions never price NaN', () => {
+  const adapter = new QwenLocalAdapter(CONFIG)
+  const prices = adapter.imageRequestPricing('qwen38', 'qwen').priceImages([
+    { type: 'image', attachment: { attachmentId: 'a', mediaType: 'image/png', width: 3840, height: 2160 }, offloaded: true },
+    { type: 'image', attachment: { attachmentId: 'b', mediaType: 'image/png' } },
+  ])
+  assert.deepEqual(
+    prices.map((price) => price.visualTokens),
+    [0, 1026], // offloaded placeholder text; 1024x1024 guess for unknown dimensions
+  )
+  assert.ok(prices.every((price) => Number.isFinite(price.visualTokens)))
+})
+
 test('imageRequestPricing: the llama.cpp line prices every image at the server clamp maximum', () => {
   const adapter = new QwenLocalAdapter({ ...CONFIG, dialect: 'llamacpp' })
   const prices = adapter.imageRequestPricing('qwen38', 'qwen').priceImages([
-    { attachmentId: 'a', mediaType: 'image/png', bytes: 10, width: 64, height: 64 },
-    { attachmentId: 'b', mediaType: 'image/jpeg', bytes: 20, width: 4096, height: 2160 },
+    { type: 'image', attachment: { attachmentId: 'a', mediaType: 'image/png', width: 64, height: 64 } },
+    { type: 'image', attachment: { attachmentId: 'b', mediaType: 'image/jpeg', width: 4096, height: 2160 } },
   ])
   assert.deepEqual(
     prices.map((price) => [price.visualTokens, price.text]),
