@@ -217,12 +217,13 @@ export function toOpenAiTools(tools) {
  * The dialects whose servers read the thinking effort from the top-level
  * `reasoning_effort` body field (NInfer's kwargs whitelist rejects the
  * template variable; TabbyAPI lists the top-level `reasoning_effort` field
- * as a first-class request parameter alongside `chat_template_kwargs`).
+ * as a first-class request parameter alongside `chat_template_kwargs`;
+ * oMLX reads top-level `reasoning_effort` and merges it into template kwargs).
  * @param dialect - the resolved server dialect.
  * @returns true when the effort rides top-level.
  */
 export function usesTopLevelEffort(dialect) {
-  return dialect === 'ninfer' || dialect === 'tabbyapi'
+  return dialect === 'ninfer' || dialect === 'tabbyapi' || dialect === 'omlx'
 }
 
 /**
@@ -232,16 +233,19 @@ export function usesTopLevelEffort(dialect) {
  * - all dialects: `chat_template_kwargs.enable_thinking` carries the
  *   per-request thinking toggle (this llama.cpp build reads the toggle only
  *   from `chat_template_kwargs`; NInfer accepts it in its kwargs whitelist;
- *   TabbyAPI maps it onto the chat template variable of the same name).
- * - `ninfer` and `tabbyapi`: effort travels as the top-level `reasoning_effort`
+ *   TabbyAPI maps it onto the chat template variable of the same name;
+ *   oMLX honors it to toggle thinking mode).
+ * - `ninfer`, `tabbyapi`, and `omlx`: effort travels as the top-level `reasoning_effort`
  *   body field (NInfer's kwargs whitelist rejects any other key; TabbyAPI
  *   accepts the field natively and lets it take precedence over template
- *   variables).
+ *   variables; oMLX forwards it to the chat template).
  * - `llamacpp`: effort travels as `chat_template_kwargs.reasoning_effort`
  *   (froggeric v22.1 template) and the selected level's hard thinking budget
  *   as the top-level `reasoning_budget_tokens` (per-request value overrides
  *   any `--reasoning-budget` CLI flag). TabbyAPI reads the same
  *   `reasoning_budget_tokens` field natively.
+ * - `omlx`: thinking budget travels as the top-level `thinking_budget` field
+ *   (oMLX ThinkingBudgetProcessor natively enforces this per request).
  *
  * `maxTokens` maps to `max_tokens`: the local servers do not read
  * `max_completion_tokens`. Compaction calls (`purpose: 'compaction'`) take
@@ -295,7 +299,13 @@ export function buildQwenBody(options, fallbackModel, config, imageDataUrls) {
   body.chat_template_kwargs = kwargs
 
   const budget = thinkingOn ? config.thinkingBudgets?.[effort] : undefined
-  if (typeof budget === 'number') body.reasoning_budget_tokens = budget
+  if (typeof budget === 'number') {
+    if (config.dialect === 'omlx') {
+      body.thinking_budget = budget
+    } else {
+      body.reasoning_budget_tokens = budget
+    }
+  }
 
   return body
 }

@@ -42,6 +42,8 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1
 
+  test/primitives-stub: {}
+
 packages:
 
   '@deepseek-ai/cordis@4.0.1':

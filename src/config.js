@@ -44,17 +44,20 @@ export const DEFAULT_PROVIDER = 'qwen38'
  * `reasoning_budget_tokens`); `tabbyapi` = TabbyAPI (the ExLlamaV3 backend
  * server), which accepts the NInfer wire natively: top-level
  * `reasoning_effort`, `chat_template_kwargs` template variables, and
- * `reasoning_budget_tokens` are all first-class request fields.
+ * `reasoning_budget_tokens` are all first-class request fields; `omlx` =
+ * oMLX (the Apple Silicon MLX server for local Qwen3.8), which accepts
+ * top-level `reasoning_effort` and native `thinking_budget` per request.
  */
 export const DIALECT_NINFER = 'ninfer'
 export const DIALECT_LLAMACPP = 'llamacpp'
 export const DIALECT_TABBYAPI = 'tabbyapi'
+export const DIALECT_OMLX = 'omlx'
 
 /**
  * Every declared server dialect, in settings-tab order (the line selector
  * iterates this list).
  */
-export const DIALECTS = Object.freeze([DIALECT_LLAMACPP, DIALECT_NINFER, DIALECT_TABBYAPI])
+export const DIALECTS = Object.freeze([DIALECT_LLAMACPP, DIALECT_NINFER, DIALECT_TABBYAPI, DIALECT_OMLX])
 
 /** Context window of the production 224K line (229376). */
 export const DEFAULT_CONTEXT_WINDOW = 229376
@@ -71,6 +74,15 @@ export const DEFAULT_TABBYAPI_BASE_URL = 'http://localhost:8083/v1'
 export const DEFAULT_TABBYAPI_MODEL = 'Qwen3.8-Flash-Next-4.05bpw'
 export const DEFAULT_TABBYAPI_CONTEXT_WINDOW = 262144
 export const DEFAULT_TABBYAPI_MAX_TOKENS = 57344
+
+/**
+ * oMLX line defaults: the Apple Silicon MLX server for Qwen3.8-27B
+ * (port 8000, 64K context window matching the 8bit profile and harness model settings).
+ */
+export const DEFAULT_OMLX_BASE_URL = 'http://localhost:8000/v1'
+export const DEFAULT_OMLX_MODEL = 'Qwen3.8-27B-MLX-8bit'
+export const DEFAULT_OMLX_CONTEXT_WINDOW = 64000
+export const DEFAULT_OMLX_MAX_TOKENS = 16384
 
 /** Per-effort hard thinking budgets of the production line. */
 export const DEFAULT_THINKING_BUDGETS = Object.freeze({
@@ -144,10 +156,10 @@ export function resolveConfig(config = {}, env = process.env) {
     throw new Error(`dsh-qwen38-local-qol: dialect must be one of ${DIALECTS.map((d) => `"${d}"`).join(', ')}, got "${dialect}"`)
   }
   // The window defaults follow the dialect: each server line has its own
-  // context capacity (the 224K lines vs the 256K ExLlamaV3 line), and the
-  // output cap keeps the line's narrow-band floor arithmetic.
-  const contextWindowDefault = dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_CONTEXT_WINDOW : DEFAULT_CONTEXT_WINDOW
-  const maxTokensDefault = dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_MAX_TOKENS : DEFAULT_MAX_TOKENS
+  // context capacity (the 224K lines vs the 256K ExLlamaV3 line vs the 64K oMLX line),
+  // and the output cap keeps the line's narrow-band floor arithmetic.
+  const contextWindowDefault = dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_CONTEXT_WINDOW : dialect === DIALECT_OMLX ? DEFAULT_OMLX_CONTEXT_WINDOW : DEFAULT_CONTEXT_WINDOW
+  const maxTokensDefault = dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_MAX_TOKENS : dialect === DIALECT_OMLX ? DEFAULT_OMLX_MAX_TOKENS : DEFAULT_MAX_TOKENS
   const provider = Array.isArray(config.provider)
     ? config.provider.map((route) => String(route).trim()).filter((route) => route !== '')
     : [DEFAULT_PROVIDER]
@@ -162,18 +174,18 @@ export function resolveConfig(config = {}, env = process.env) {
 
   return {
     // The base-url default follows the dialect (the 224K lines share the
-    // standard llama-server port; the ExLlamaV3 line has its own port).
-    baseURL: setting(config.baseURL, env.DSH_QWEN38_BASE_URL, dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_BASE_URL : dialect === DIALECT_NINFER ? DEFAULT_BASE_URL : DEFAULT_LLAMA_BASE_URL),
+    // standard llama-server port; the ExLlamaV3 line has its own port; oMLX defaults to 8000).
+    baseURL: setting(config.baseURL, env.DSH_QWEN38_BASE_URL, dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_BASE_URL : dialect === DIALECT_OMLX ? DEFAULT_OMLX_BASE_URL : dialect === DIALECT_NINFER ? DEFAULT_BASE_URL : DEFAULT_LLAMA_BASE_URL),
     // The model default follows the dialect (the 224K lines share the neutral
-    // line name; the ExLlamaV3 line names its quantized artifact).
-    model: setting(config.model, env.DSH_QWEN38_MODEL, dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_MODEL : dialect === DIALECT_NINFER ? DEFAULT_MODEL : DEFAULT_LLAMA_MODEL),
+    // line name; the ExLlamaV3 and oMLX lines name their local artifacts).
+    model: setting(config.model, env.DSH_QWEN38_MODEL, dialect === DIALECT_TABBYAPI ? DEFAULT_TABBYAPI_MODEL : dialect === DIALECT_OMLX ? DEFAULT_OMLX_MODEL : dialect === DIALECT_NINFER ? DEFAULT_MODEL : DEFAULT_LLAMA_MODEL),
     /**
      * Human-readable selector name for the model entry. The wire model id is
      * an artifact alias (e.g. the server's quantized file name); the display
      * name is what the GUI selector shows. Unset falls back to the model id.
      */
     displayName: setting(config.displayName, env.DSH_QWEN38_DISPLAY_NAME, undefined),
-    apiKey: setting(config.apiKey, env.DSH_QWEN38_API_KEY, undefined),
+    apiKey: setting(config.apiKey, env.DSH_QWEN38_API_KEY || env.OMLX_API_KEY, undefined),
     dialect,
     contextWindow,
     maxTokens,

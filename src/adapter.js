@@ -183,7 +183,7 @@ export class QwenLocalAdapter extends LlmAdapter {
    */
   imageRequestPricing(_provider, _model) {
     const dialect = this.#config.dialect
-    if (dialect === 'tabbyapi') return undefined
+    if (dialect === 'tabbyapi' || dialect === 'omlx') return undefined
     const llamacpp = dialect === 'llamacpp'
     // The meter prices ImageBlocks ({ type:'image', attachment, offloaded? }):
     // dimensions live on the durable attachment ref, never on the block.
