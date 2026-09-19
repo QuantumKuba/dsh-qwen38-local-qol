@@ -40,6 +40,7 @@ const COPY = {
     dialectNinfer: 'NInfer',
     dialectLlamacpp: 'llama.cpp',
     dialectTabbyapi: 'TabbyAPI',
+    dialectOmlx: 'oMLX',
     connection: 'Connection',
     baseURL: 'Server base URL',
     model: 'Model id',
@@ -52,6 +53,7 @@ const COPY = {
     thinkingHintNinfer: 'NInfer reads its thinking budget at server startup (--default-thinking-budget); a per-request budget is not supported (ninfer as of 2026-09-14; ninfer-windows 0.7.1). Change the startup flag and restart the server.',
     thinkingHintLlamacpp: 'Thinking hard cap, sent per request per selected level (overrides the server\'s --reasoning-budget flag).',
     thinkingHintTabbyapi: 'Thinking hard cap, sent per request per selected level (TabbyAPI native reasoning_budget_tokens).',
+    thinkingHintOmlx: 'Thinking hard cap, sent per request per selected level (oMLX native thinking_budget).',
     compaction: 'Compaction prefill trim',
     summarizeImages: 'Images in the summarizer prefill',
     summarizeHint: 'Off strips images in the summarizer prefill to text placeholders (prefer with mmproj offload).',
@@ -76,6 +78,7 @@ const COPY = {
     dialectNinfer: 'NInfer',
     dialectLlamacpp: 'llama.cpp',
     dialectTabbyapi: 'TabbyAPI',
+    dialectOmlx: 'oMLX',
     connection: '连接',
     baseURL: '服务器地址',
     model: '模型 id',
@@ -88,6 +91,7 @@ const COPY = {
     thinkingHintNinfer: 'NInfer 的 thinking 预算在服务启动时设定（--default-thinking-budget 启动参数，不支持逐请求，ninfer as of 2026-09-14；ninfer-windows 0.7.1）。改启动参数后重启服务生效。',
     thinkingHintLlamacpp: 'thinking 硬帽，逐请求按所选档发送（覆盖服务端 --reasoning-budget）。',
     thinkingHintTabbyapi: 'thinking 硬帽，逐请求按所选档发送（TabbyAPI 原生 reasoning_budget_tokens）。',
+    thinkingHintOmlx: 'thinking 硬帽，逐请求按所选档发送（oMLX 原生 thinking_budget）。',
     compaction: '压缩预填充裁剪',
     summarizeImages: '摘要预填充里的图片',
     summarizeHint: '关闭 = 摘要预填充里的图片替换为文本占位符（mmproj offload 时优选）。',
@@ -163,6 +167,7 @@ const LINE_WINDOW_DEFAULTS = Object.freeze({
   ninfer: { contextWindow: 229376, maxTokens: 24576 },
   llamacpp: { contextWindow: 229376, maxTokens: 24576 },
   tabbyapi: { contextWindow: 262144, maxTokens: 57344 },
+  omlx: { contextWindow: 64000, maxTokens: 16384 },
 })
 
 /**
@@ -228,6 +233,7 @@ export function toDraft(value) {
     ninfer: lineRecord('ninfer', value.lines?.ninfer, dialect === 'ninfer' ? legacyTop : undefined),
     llamacpp: lineRecord('llamacpp', value.lines?.llamacpp, dialect === 'llamacpp' ? legacyTop : undefined),
     tabbyapi: lineRecord('tabbyapi', value.lines?.tabbyapi, dialect === 'tabbyapi' ? legacyTop : undefined),
+    omlx: lineRecord('omlx', value.lines?.omlx, dialect === 'omlx' ? legacyTop : undefined),
   }
   const active = lines[dialect]
   return {
@@ -364,6 +370,7 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
         ninfer: lineBlock(persistedLines.ninfer),
         llamacpp: lineBlock(persistedLines.llamacpp),
         tabbyapi: lineBlock(persistedLines.tabbyapi),
+        omlx: lineBlock(persistedLines.omlx),
       },
       contextWindow: Number.parseInt(draft.contextWindow, 10),
       maxTokens: Number.parseInt(draft.maxTokens, 10),
@@ -416,7 +423,7 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
     React.createElement('section', { className: 'qol-group' },
       React.createElement('h3', { className: 'qol-groupHead' }, t.line),
       React.createElement('div', { className: 'qol-radioRow' },
-        ['llamacpp', 'ninfer', 'tabbyapi'].map((dialect) =>
+        ['llamacpp', 'ninfer', 'tabbyapi', 'omlx'].map((dialect) =>
           React.createElement('label', { key: dialect, className: 'qol-radio' },
             React.createElement('input', {
               type: 'radio',
@@ -424,7 +431,7 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
               checked: draft.dialect === dialect,
               onChange: () => { switchDialect(dialect) },
             }),
-            dialect === 'ninfer' ? t.dialectNinfer : dialect === 'tabbyapi' ? t.dialectTabbyapi : t.dialectLlamacpp,
+            dialect === 'ninfer' ? t.dialectNinfer : dialect === 'tabbyapi' ? t.dialectTabbyapi : dialect === 'omlx' ? t.dialectOmlx : t.dialectLlamacpp,
           ),
         ),
       ),
@@ -455,7 +462,7 @@ function QwenLocalSectionEntry({ useLocale, load, save }) {
             React.createElement(Input, { className: 'qol-input', inputMode: 'numeric', disabled: ninfer, value: draft[effort], onChange: digitsOnly((v) => { setDraft({ [effort]: v }) }) })),
         ),
       ),
-      React.createElement('p', { className: 'qol-hint' }, ninfer ? t.thinkingHintNinfer : draft.dialect === 'tabbyapi' ? t.thinkingHintTabbyapi : t.thinkingHintLlamacpp),
+      React.createElement('p', { className: 'qol-hint' }, ninfer ? t.thinkingHintNinfer : draft.dialect === 'tabbyapi' ? t.thinkingHintTabbyapi : draft.dialect === 'omlx' ? t.thinkingHintOmlx : t.thinkingHintLlamacpp),
     ),
     // Compaction: the wiring status first (the trim controls only apply to
     // sessions using the qwen38 preset), then the trim knobs.

@@ -12,6 +12,10 @@ import {
   DEFAULT_LLAMA_MODEL,
   DEFAULT_MAX_TOKENS,
   DEFAULT_MODEL,
+  DEFAULT_OMLX_BASE_URL,
+  DEFAULT_OMLX_CONTEXT_WINDOW,
+  DEFAULT_OMLX_MAX_TOKENS,
+  DEFAULT_OMLX_MODEL,
   DEFAULT_THINKING_BUDGETS,
 } from '../src/config.js'
 import { DEFAULT_TRIM_KNOBS } from '../src/prepare.js'
@@ -65,6 +69,10 @@ test('sectionSchema: lines carry each dialect production defaults (connection + 
   assert.equal(resolved.lines.llamacpp.model, DEFAULT_LLAMA_MODEL)
   assert.equal(resolved.lines.llamacpp.contextWindow, DEFAULT_CONTEXT_WINDOW)
   assert.equal(resolved.lines.llamacpp.maxTokens, DEFAULT_MAX_TOKENS)
+  assert.equal(resolved.lines.omlx.baseURL, DEFAULT_OMLX_BASE_URL)
+  assert.equal(resolved.lines.omlx.model, DEFAULT_OMLX_MODEL)
+  assert.equal(resolved.lines.omlx.contextWindow, DEFAULT_OMLX_CONTEXT_WINDOW)
+  assert.equal(resolved.lines.omlx.maxTokens, DEFAULT_OMLX_MAX_TOKENS)
 })
 
 test('sectionSchema: a user-saved line persists over its own defaults', () => {
@@ -83,6 +91,8 @@ test('sectionSchema: a user-saved line persists over its own defaults', () => {
   // The untouched line keeps its defaults.
   assert.equal(resolved.lines.ninfer.contextWindow, DEFAULT_CONTEXT_WINDOW)
   assert.equal(resolved.lines.ninfer.defaultThinkingBudget, 16384)
+  assert.equal(resolved.lines.omlx.contextWindow, DEFAULT_OMLX_CONTEXT_WINDOW)
+  assert.equal(resolved.lines.omlx.maxTokens, DEFAULT_OMLX_MAX_TOKENS)
 })
 
 test('sectionSchema: a wrong-typed line field is rejected', () => {
@@ -131,6 +141,29 @@ test('sectionSchema: unknown keys pass through (a row base may carry `provider`)
 test('validateSection: the production line passes', () => {
   const defaults = sectionSchema()({})
   assert.doesNotThrow(() => validateSection(defaults))
+})
+
+test('validateSection: the omlx dialect line passes', () => {
+  const omlxSection = {
+    ...sectionSchema()({}),
+    dialect: 'omlx',
+    baseURL: DEFAULT_OMLX_BASE_URL,
+    model: DEFAULT_OMLX_MODEL,
+    contextWindow: DEFAULT_OMLX_CONTEXT_WINDOW,
+    maxTokens: DEFAULT_OMLX_MAX_TOKENS,
+  }
+  assert.doesNotThrow(() => validateSection(omlxSection))
+})
+
+test('validateSection: an invalid omlx line knob fails loud', () => {
+  const bad = {
+    ...sectionSchema()({}),
+    lines: {
+      ...sectionSchema()({}).lines,
+      omlx: { ...sectionSchema()({}).lines.omlx, contextWindow: -1 },
+    },
+  }
+  assert.throws(() => validateSection(bad), /lines\.omlx\.contextWindow/)
 })
 
 test('validateSection: an unknown dialect fails loud', () => {

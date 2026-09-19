@@ -171,6 +171,9 @@ test('toDraft: a fresh section (no user layer) ships the production defaults pre
   assert.equal(draft.lines.tabbyapi.baseURL, '')
   assert.equal(draft.lines.tabbyapi.contextWindow, '262144')
   assert.equal(draft.lines.tabbyapi.maxTokens, '57344')
+  assert.equal(draft.lines.omlx.baseURL, '')
+  assert.equal(draft.lines.omlx.contextWindow, '64000')
+  assert.equal(draft.lines.omlx.maxTokens, '16384')
   assert.equal(draft.lines.ninfer.xhigh, '16384')
 })
 
@@ -213,10 +216,13 @@ test('toDraft: a new-shape section reads the active line from lines and parks th
   assert.equal(draft.lines.ninfer.images, 'keep')
   assert.equal(draft.lines.ninfer.keepTurns, '3')
   assert.equal(draft.lines.ninfer.toolChars, '1000')
-  // The unpersisted TabbyAPI line parks at its built-in 256K defaults.
+  // The unpersisted TabbyAPI and oMLX lines park at their built-in defaults.
   assert.equal(draft.lines.tabbyapi.baseURL, '')
   assert.equal(draft.lines.tabbyapi.contextWindow, '262144')
   assert.equal(draft.lines.tabbyapi.maxTokens, '57344')
+  assert.equal(draft.lines.omlx.baseURL, '')
+  assert.equal(draft.lines.omlx.contextWindow, '64000')
+  assert.equal(draft.lines.omlx.maxTokens, '16384')
 })
 
 test('toDraft: a tabbyapi-active section lifts the ExLlamaV3 line onto the inputs', () => {
@@ -239,4 +245,28 @@ test('toDraft: a tabbyapi-active section lifts the ExLlamaV3 line onto the input
   // The other lines park at their built-in defaults.
   assert.equal(draft.lines.ninfer.baseURL, '')
   assert.equal(draft.lines.llamacpp.baseURL, '')
+  assert.equal(draft.lines.omlx.baseURL, '')
+})
+
+test('toDraft: an omlx-active section lifts the MLX line onto the inputs', () => {
+  const value = {
+    dialect: 'omlx',
+    baseURL: 'http://localhost:8000/v1',
+    model: 'Qwen3.8-27B-MLX-8bit',
+    user: { lines: { omlx: {} } },
+    lines: {
+      omlx: { baseURL: 'http://localhost:8000/v1', model: 'Qwen3.8-27B-MLX-8bit', displayName: 'MLX', contextWindow: 64000, maxTokens: 16384, thinkingBudgets: { low: 4096, medium: 8192, xhigh: 16384 } },
+    },
+  }
+  const draft = client.toDraft(value)
+  assert.equal(draft.dialect, 'omlx')
+  assert.equal(draft.baseURL, 'http://localhost:8000/v1')
+  assert.equal(draft.model, 'Qwen3.8-27B-MLX-8bit')
+  assert.equal(draft.displayName, 'MLX')
+  assert.equal(draft.contextWindow, '64000')
+  assert.equal(draft.maxTokens, '16384')
+  // The other lines park at their built-in defaults.
+  assert.equal(draft.lines.ninfer.baseURL, '')
+  assert.equal(draft.lines.llamacpp.baseURL, '')
+  assert.equal(draft.lines.tabbyapi.baseURL, '')
 })
