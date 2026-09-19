@@ -129,16 +129,16 @@ profile（其 tui profile）有效。
 | `summarizeToolResultMaxChars` | `2000` | `0` = 不截 |
 | `maxTokens` | `24576` | 摘要帽（绕开 preset isolated group 的 8192 死角：后端自持） |
 
-## 5. Wire 映射（双方言，来自现网验证的 pi-ai 补丁分道）
+## 5. Wire 映射（多方言分道）
 
-| 请求件 | `dialect: 'llamacpp'`（llama-server + froggeric v22.1 jinja 模板） | `dialect: 'ninfer'`（0.5.0） |
-|---|---|---|
-| effort | `chat_template_kwargs.reasoning_effort`（模板 kwargs 白名单；顶层被忽略） | 顶层 `reasoning_effort` |
-| effort off | `chat_template_kwargs.enable_thinking: false` | `reasoning_effort: 'none'` |
-| thinking budget | `reasoning_budget_tokens`（服务端补丁输出 `completion_tokens_details.reasoning_tokens`） | 发送即忽略（服务端默认帽 16384） |
-| vision | `image_url`（服务端 `--image-min/max-tokens` 强制 resize） | `image_url`（客户端预缩 ≤1024 长边） |
-| tools | 标准 `tools` 数组 + `tool_calls` 流 | 同左 |
-| maxTokens | `max_tokens` | `max_tokens` |
+| 请求件 | `dialect: 'llamacpp'`（llama-server + froggeric v22.1 jinja 模板） | `dialect: 'ninfer'`（0.5.0） | `dialect: 'tabbyapi'`（ExLlamaV3） | `dialect: 'omlx'`（Apple Silicon MLX） |
+|---|---|---|---|---|
+| effort | `chat_template_kwargs.reasoning_effort`（模板 kwargs 白名单；顶层被忽略） | 顶层 `reasoning_effort` | 顶层 `reasoning_effort` | 顶层 `reasoning_effort` |
+| effort off | `chat_template_kwargs.enable_thinking: false` | `reasoning_effort: 'none'` | `reasoning_effort: 'none'` | `chat_template_kwargs.enable_thinking: false` |
+| thinking budget | `reasoning_budget_tokens`（服务端补丁输出 `completion_tokens_details.reasoning_tokens`） | 发送即忽略（服务端默认帽 16384） | `reasoning_budget_tokens`（原生按请求执行） | 顶层 `thinking_budget`（原生按请求执行，Pydantic model ChatCompletionRequest） |
+| vision | `image_url`（服务端 `--image-min/max-tokens` 强制 resize） | `image_url`（客户端预缩 ≤1024 长边） | `image_url`（token meter 未钉，请求正常） | `image_url`（token meter 未钉，请求正常） |
+| tools | 标准 `tools` 数组 + `tool_calls` 流 | 同左 | 同左 | 同左（OpenAI 兼容 `tool_calls` stream deltas） |
+| maxTokens | `max_tokens` | `max_tokens` | `max_tokens` | `max_tokens` |
 
 finish_reason 映射：`stop`→stop、`tool_calls`→tool-calls、`length`→**max-tokens**
 （截断不当完成报，dsh-llamacpp 同款）。错误 = `LlmError` 稳定 code 表
